@@ -1,5 +1,10 @@
 # Entregas PT
 
+## Novedades v2.4 — entregas parciales y plazo automático
+- **Varios envíos por OT**: en cada envío eliges qué ítems y **qué cantidad** salen; lo demás queda pendiente. Cada envío tiene chofer, vehículo, prueba de entrega y comprobante propios (el comprobante lista lo entregado y lo pendiente).
+- La OT queda como **"Parcial"** hasta que sale todo; la pantalla Hoy muestra las **notas con entregas parciales**.
+- **Plazo automático**: lee el "Tiempo de entrega" de la nota (ej. "10 días hábiles") y calcula la fecha compromiso sumando días de **lunes a viernes** desde la fecha que elijas (por defecto, hoy).
+
 ## Novedades v2.3 — planificación de producción
 - Pestaña **🏭 Producción**: OT en fabricación (avance por etapas, fin estimado, riesgo) y **aprobadas en cola** ordenadas por fecha límite para iniciar.
 - Tipos de tablero con **días de fabricación** (NLAB 3, NAB 8, Celda 15, editables) y **días hábiles** del galpón.

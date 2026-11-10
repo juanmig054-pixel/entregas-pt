@@ -36,6 +36,11 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Usar firma fija (permite instalar encima de la versión anterior)
+        run: |
+          mkdir -p ~/.android
+          cp keystore/debug.keystore ~/.android/debug.keystore
+
       - name: Compilar APK
         working-directory: android
         run: |

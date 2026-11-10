@@ -1,5 +1,12 @@
 # Entregas PT
 
+## Novedades v2.1 — trazabilidad hasta el cliente
+- Pantalla **Hoy**: vencidas, en riesgo, para despachar hoy, en ruta, entregadas y mañana.
+- Estados **🛣 En ruta** y **✅ Entregada**. Al entregar: quién recibe, cédula, hasta 3 fotos y firma en pantalla.
+- **Comprobante** de entrega en imagen para enviar por WhatsApp.
+- **Historial** por OT con quién hizo cada cosa y cuánto duró cada etapa (fabricación, en PT, ruta, total).
+- Indicadores nuevos: tiempo promedio en ruta y % de entregas con prueba.
+
 ## Novedades v2.0 — varios teléfonos conectados
 - Datos compartidos en tiempo real con Firebase (proyecto `entregas-pt`). Funciona sin señal y sincroniza al volver.
 - Usuarios con nombre y PIN. Roles: **Supervisor** (todo), **Despacho** (tilda ítems y despacha), **Vendedor** (solo ve sus notas y comenta).

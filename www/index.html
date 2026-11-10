@@ -35,7 +35,7 @@ main{padding:14px 16px 110px;max-width:720px;margin:auto}
 #fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;border:0;background:var(--pri);color:#fff;font-size:32px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:6}
 @media (prefers-color-scheme:dark){#fab{color:#0f1115}}
 .nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
-.nav button{flex:1;border:0;background:none;color:var(--mut);padding:10px 0 12px;font-size:12px}
+.nav button{flex:1;min-width:0;border:0;background:none;color:var(--mut);padding:10px 0 12px;font-size:12px}
 .nav button i{display:block;font-style:normal;font-size:20px}.nav button.on{color:var(--pri);font-weight:700}
 #sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10;align-items:flex-end;justify-content:center}
 #sheet.on{display:flex}
@@ -81,6 +81,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;b
 .chk.on{border-color:var(--ok);background:var(--ok2)}.chk.done{opacity:.6}
 .chk b{flex:none;min-width:34px;text-align:right}.chk div{flex:1}.chk small{display:block;color:var(--ok);font-weight:600}
 .bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0 10px}.bar i{display:block;height:100%;background:var(--ok);transition:.3s}
+.pill.cola{background:var(--line);color:var(--tx)}.card.st-cola{border-left-color:var(--mut)}
 .pill.ruta{background:var(--ruta2);color:var(--ruta)}.card.st-ruta{border-left-color:var(--ruta)}
 .tl{position:relative;margin:8px 0 0 8px;padding-left:18px;border-left:2px solid var(--line)}
 .tl .ev{position:relative;padding:4px 0 10px}.tl .ev:before{content:"";position:absolute;left:-25px;top:8px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--pri)}
@@ -110,6 +111,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;b
 <nav class="nav">
 <button data-tab="hoy" onclick="ir('hoy')"><i>☀️</i>Hoy</button>
 <button data-tab="inicio" onclick="ir('inicio')"><i>📋</i>Órdenes</button>
+<button data-tab="prod" onclick="ir('prod')"><i>🏭</i>Producción</button>
 <button data-tab="cal" onclick="ir('cal')"><i>📅</i>Calendario</button>
 <button data-tab="ajustes" onclick="ir('ajustes')"><i>⚙️</i>Ajustes</button>
 </nav>
@@ -124,11 +126,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;b
 <script>
 /* ========= DATOS ========= */
 const KEY='entregasPT_v1';
-const LBL={ruta:'En ruta',fab:'En fabricación',pt:'En PT · sin fecha',ag:'Agendada',venc:'Vencida',desp:'Despachada'};
+const LBL={cola:'En cola',ruta:'En ruta',fab:'En fabricación',pt:'En PT · sin fecha',ag:'Agendada',venc:'Vencida',desp:'Despachada'};
 const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 let DB=load();DB.cfg=Object.assign(defaults().cfg,DB.cfg);
-function defaults(){return{ordenes:[],cfg:{vendedores:['Vendedor 1','Vendedor 2','Vendedor 3'],dias:[1,2,3,4,5],cupo:4,choferes:[],vehiculos:[],causas:['Cliente no tiene espacio','Falta transporte','Falta material','Atraso en fabricación','Pago pendiente','Error en la nota']}}}
+function defaults(){return{ordenes:[],cfg:{vendedores:['Vendedor 1','Vendedor 2','Vendedor 3'],dias:[1,2,3,4,5],cupo:4,choferes:[],vehiculos:[],diasLab:[1,2,3,4,5],tipos:[{n:'NLAB',d:3},{n:'NAB',d:8},{n:'Celda',d:15}],etapas:['Corte y doblez','Pintura','Armado','Cableado','Pruebas'],causas:['Cliente no tiene espacio','Falta transporte','Falta material','Atraso en fabricación','Pago pendiente','Error en la nota']}}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.ordenes)&&d.cfg)return d}catch(e){}return defaults()}
 function guardarLocal(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
 function save(){guardarLocal();pushCambios()}
@@ -147,7 +149,7 @@ const fmt=s=>{if(!s)return'—';const d=parse(s);return DIAS[d.getDay()]+' '+d.g
 const ahora=()=>new Date().toISOString();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1800)}
-function est(o){if(o.despachada)return o.enRuta?'ruta':'desp';if(o.enFab)return'fab';if(!o.fechaEntrega)return'pt';return o.fechaEntrega<hoy()?'venc':'ag'}
+function est(o){if(o.despachada)return o.enRuta?'ruta':'desp';if(o.enCola)return'cola';if(o.enFab)return'fab';if(!o.fechaEntrega)return'pt';return o.fechaEntrega<hoy()?'venc':'ag'}
 const byId=id=>DB.ordenes.find(o=>o.id===id);
 const etq=o=>{const e=est(o);return e==='desp'?(o.entregada?'Entregada':'Despachada'):LBL[e]};
 
@@ -225,7 +227,8 @@ function render(){if(!USR)return;
  $('#hoyTxt').textContent='Hoy: '+fmt(hoy());
  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
  $('#fab').style.display=S.tab==='ajustes'||!puede('crear')?'none':'flex';
- $('#main').innerHTML=S.tab==='hoy'?vHoy():S.tab==='inicio'?vInicio():S.tab==='cal'?vCal():vAjustes();
+ document.querySelector('.nav [data-tab=prod]').hidden=!USR||USR.rol==='vend';
+ $('#main').innerHTML=S.tab==='prod'?vProd():S.tab==='hoy'?vHoy():S.tab==='inicio'?vInicio():S.tab==='cal'?vCal():vAjustes();
  if(S.tab==='inicio')pintarLista();
 }
 
@@ -347,7 +350,7 @@ async function bajarTrello(url,type){const auth=`OAuth oauth_consumer_key="${TR.
  if(CH){const r=await CH.get({url,headers:{Authorization:auth},responseType:'blob'});if(r.status>=300)throw new Error('No se pudo bajar el adjunto ('+r.status+')');return b64Blob(r.data,type)}
  const r=await fetch(url,{headers:{Authorization:auth}});if(!r.ok)throw new Error('No se pudo bajar el adjunto ('+r.status+')');return r.blob()}
 function vTrello(){return`<div class="box"><h3 style="margin-top:0">🔗 Trello</h3>
- ${TR.ok?`<div class="kv"><span>Tablero</span><b>${esc(TR.boardName||'')}</b></div><div class="kv"><span>En fabricación</span><b>${esc(TR.fabName||'—')}</b></div><div class="kv"><span>Producto terminado</span><b>${esc(TR.ptName||'—')}</b></div>`:'<div class="mut sm">Conecta tu tablero para traer las tarjetas con su nota de entrega.</div>'}
+ ${TR.ok?`<div class="kv"><span>Tablero</span><b>${esc(TR.boardName||'')}</b></div><div class="kv"><span>Aprobadas</span><b>${esc(TR.aprName||'—')}</b></div><div class="kv"><span>En fabricación</span><b>${esc(TR.fabName||'—')}</b></div><div class="kv"><span>Producto terminado</span><b>${esc(TR.ptName||'—')}</b></div>`:'<div class="mut sm">Conecta tu tablero para traer las tarjetas con su nota de entrega.</div>'}
  <button class="btn sec" onclick="configTrello()">${TR.ok?'Cambiar configuración':'Conectar Trello'}</button></div>`}
 function configTrello(){openSheet(`<h3>🔗 Conectar Trello</h3>
  <div class="box sm"><b>Cómo sacar la clave y el token (una sola vez):</b><br>1. Entra en Chrome a <span style="user-select:all">trello.com/power-ups/admin</span><br>2. Toca <b>Nuevo</b>, ponle de nombre "Entregas PT", elige tu espacio de trabajo y guarda.<br>3. Entra a la pestaña <b>Clave API</b> → <b>Generar una nueva clave API</b>. Copia la clave.<br>4. Al lado de la clave toca el enlace <b>Token</b> → <b>Permitir</b>. Copia el token.</div>
@@ -362,30 +365,31 @@ async function probarTrello(){TR.key=$('#tK').value.trim();TR.token=$('#tT').val
  catch(e){$('#tSel').innerHTML=`<div class="hint w">⚠ ${esc(e.message)}</div>`}}
 async function elegirTablero(id,btn){const name=btn.querySelector('b').textContent;$('#tSel').innerHTML='<div class="load">⏳ Leyendo listas…</div>';
  try{const ls=await trello('boards/'+id+'/lists',{fields:'name',filter:'open'});
-  const fab=ls.find(l=>/^en proceso$/i.test(l.name.trim()))||ls.find(l=>/proceso/i.test(l.name)),pt=ls.find(l=>/terminad/i.test(l.name));
+  const fab=ls.find(l=>/^en proceso$/i.test(l.name.trim()))||ls.find(l=>/proceso/i.test(l.name)),pt=ls.find(l=>/terminad/i.test(l.name)),apr=ls.find(l=>/aprobad/i.test(l.name));
   const op=(sel)=>`<option value="">— Ninguna —</option>`+ls.map(l=>`<option value="${l.id}" ${sel&&sel.id===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
-  $('#tSel').innerHTML=`<div class="box" style="margin-top:12px"><b>${esc(name)}</b><label for="tF">Lista "en fabricación"</label><select id="tF">${op(fab)}</select>
+  $('#tSel').innerHTML=`<div class="box" style="margin-top:12px"><b>${esc(name)}</b><label for="tA">Lista "aprobadas" (cola de producción)</label><select id="tA">${op(apr)}</select><label for="tF">Lista "en fabricación"</label><select id="tF">${op(fab)}</select>
   <label for="tP">Lista "producto terminado"</label><select id="tP">${op(pt)}</select><button class="btn" onclick="guardarTrello('${id}',${esc(JSON.stringify(name))})">💾 Guardar</button></div>`}
  catch(e){$('#tSel').innerHTML=`<div class="hint w">⚠ ${esc(e.message)}</div>`}}
-function guardarTrello(board,boardName){const f=$('#tF'),p=$('#tP');if(!f.value&&!p.value)return toast('Elige al menos una lista');
- Object.assign(TR,{board,boardName,fab:f.value,fabName:f.value?f.selectedOptions[0].text:'',pt:p.value,ptName:p.value?p.selectedOptions[0].text:''});guardarTR();closeSheet();render();toast('Trello conectado')}
+function guardarTrello(board,boardName){const f=$('#tF'),p=$('#tP'),a=$('#tA');if(!f.value&&!p.value&&!a.value)return toast('Elige al menos una lista');
+ Object.assign(TR,{board,boardName,apr:a.value,aprName:a.value?a.selectedOptions[0].text:'',fab:f.value,fabName:f.value?f.selectedOptions[0].text:'',pt:p.value,ptName:p.value?p.selectedOptions[0].text:''});guardarTR();closeSheet();render();toast('Trello conectado')}
 async function trelloImportar(){openSheet('<h3>⬇ Tarjetas de Trello</h3><div class="load">⏳ Leyendo tarjetas…</div>');
- try{const prm={fields:'name,desc,shortUrl,idList',attachments:'true',attachment_fields:'id,name,mimeType,url,isUpload,fileName,bytes'};
-  const [fab,pt]=await Promise.all([TR.fab?trello('lists/'+TR.fab+'/cards',prm):[],TR.pt?trello('lists/'+TR.pt+'/cards',prm):[]]);
-  const movidas=moverTerminadas(pt);TR.nuevas=[...fab,...pt].filter(c=>!DB.ordenes.some(o=>o.trelloId===c.id)).length;
+ try{const prm={fields:'name,desc,shortUrl,idList,due',attachments:'true',attachment_fields:'id,name,mimeType,url,isUpload,fileName,bytes'};
+  const [fab,pt,apr]=await Promise.all([TR.fab?trello('lists/'+TR.fab+'/cards',prm):[],TR.pt?trello('lists/'+TR.pt+'/cards',prm):[],TR.apr?trello('lists/'+TR.apr+'/cards',prm):[]]);
+  const movidas=moverTerminadas(pt)+moverAProceso(fab);TR.nuevas=[...fab,...pt,...apr].filter(c=>!DB.ordenes.some(o=>o.trelloId===c.id)).length;
   if(movidas){save();render()}
-  TRIMP={};[...fab.map(c=>({...c,_l:'fab'})),...pt.map(c=>({...c,_l:'pt'}))].forEach(c=>TRIMP[c.id]=c);
+  TRIMP={};[...apr.map(c=>({...c,_l:'apr'})),...fab.map(c=>({...c,_l:'fab'})),...pt.map(c=>({...c,_l:'pt'}))].forEach(c=>TRIMP[c.id]=c);
   const fila=c=>{const o=DB.ordenes.find(x=>x.trelloId===c.id),pdf=(c.attachments||[]).some(esPdf);
    return`<div class="card ${o?'st-desp':''}" style="padding:10px"><div class="trc"><div><b>${esc(c.name)}</b><div class="sm mut">${pdf?'📄 Con nota PDF':'Sin PDF'}${o?' · ✓ Ya está como OT '+esc(o.ot):''}</div></div>
    ${o?`<button class="chip" onclick="ver('${o.id}')">Ver</button>`:`<button class="chip on" onclick="importarTarjeta('${c.id}')">Importar</button>`}</div></div>`};
-  openSheet(`<h3>⬇ Tarjetas de Trello</h3>${movidas?`<div class="hint g">📦 ${movidas} orden(es) pasaron a producto terminado porque se movieron en Trello.</div>`:''}
+  openSheet(`<h3>⬇ Tarjetas de Trello</h3>${movidas?`<div class="hint g">🔄 ${movidas} orden(es) se actualizaron porque se movieron en Trello.</div>`:''}
+  ${TR.apr?`<h3 style="margin-top:14px">📥 ${esc(TR.aprName)} <span class="mut sm">(${apr.length})</span></h3>${apr.map(fila).join('')||'<div class="mut sm">Sin tarjetas.</div>'}`:''}
   ${TR.fab?`<h3 style="margin-top:14px">🔧 ${esc(TR.fabName)} <span class="mut sm">(${fab.length})</span></h3>${fab.map(fila).join('')||'<div class="mut sm">Sin tarjetas.</div>'}`:''}
   ${TR.pt?`<h3 style="margin-top:14px">📦 ${esc(TR.ptName)} <span class="mut sm">(${pt.length})</span></h3>${pt.map(fila).join('')||'<div class="mut sm">Sin tarjetas.</div>'}`:''}
   <button class="btn sec" onclick="closeSheet()">Cerrar</button>`)}
  catch(e){openSheet(`<h3>⬇ Tarjetas de Trello</h3><div class="hint w">⚠ ${esc(e.message)}</div><button class="btn sec" onclick="configTrello()">Revisar configuración</button><button class="btn sec" onclick="closeSheet()">Cerrar</button>`)}}
 let TRIMP={};
 const esPdf=a=>a.isUpload!==false&&(/pdf/i.test(a.mimeType||'')||/\.pdf$/i.test(a.fileName||a.name||''));
-async function importarTarjeta(cid){const c=TRIMP[cid];if(!c)return;const pre={trelloId:c.id,trelloUrl:c.shortUrl,trelloList:c._l,enFab:c._l==='fab',producto:'',items:[]};
+async function importarTarjeta(cid){const c=TRIMP[cid];if(!c)return;const pre={trelloId:c.id,trelloUrl:c.shortUrl,trelloList:c._l,enFab:c._l==='fab',enCola:c._l==='apr',fechaCompromiso:c.due?c.due.slice(0,10):'',producto:'',items:[]};
  const m=c.name.match(/\bOT\s*[-#:N°º.]*\s*(\d+)/i);if(m)pre.ot=m[1];
  const a=(c.attachments||[]).find(esPdf);
  if(!a){pre.producto=c.name;abrirForm(null,'',pre);return toast('La tarjeta no tiene PDF: completa los ítems a mano')}
@@ -412,7 +416,7 @@ function vInicio(){
  const tb=puede('crear')&&TR.ok?`<button class="btn sec" style="margin:0 0 12px" onclick="trelloImportar()">⬇ Traer tarjetas de Trello</button>`:'';
  return tb+`<button class="btn sec" style="margin:0 0 12px" onclick="$('#qrFile').click()">📷 Escanear QR de una OT</button><div class="kpis">${k('pt',n('pt'),'Sin fecha')}${k('ag',n('ag'),'Agendadas')}${k('venc',n('venc'),'Vencidas',1)}${k('hoy',act.filter(o=>o.fechaEntrega===t).length,'Para hoy')}</div>
  <input class="search" placeholder="🔍 Buscar OT, nota, cliente, producto" value="${esc(S.q)}" oninput="S.q=this.value;pintarLista()">
- <div class="chips">${ch('activas','Activas')}${ch('ruta','🛣 En ruta')}${ch('fab','🔧 En fabricación')}${ch('pt','Sin fecha')}${ch('ag','Agendadas')}${ch('venc','Vencidas')}${ch('desp','Despachadas')}${ch('todas','Todas')}</div>
+ <div class="chips">${ch('activas','Activas')}${ch('ruta','🛣 En ruta')}${ch('fab','🔧 En fabricación')}${ch('cola','📥 En cola')}${ch('pt','Sin fecha')}${ch('ag','Agendadas')}${ch('venc','Vencidas')}${ch('desp','Despachadas')}${ch('todas','Todas')}</div>
  <select onchange="S.vend=this.value;pintarLista()" style="margin-bottom:12px"><option value="">Todos los vendedores</option>${DB.cfg.vendedores.map(v=>`<option ${S.vend===v?'selected':''}>${esc(v)}</option>`).join('')}</select>
  <div id="lista"></div>`}
 function setF(f){S.filtro=f;render()}
@@ -420,16 +424,16 @@ function pintarLista(){
  const t=hoy(),q=S.q.trim().toLowerCase();
  let L=DB.ordenes.filter(o=>{const e=est(o);
   if(S.filtro==='activas'&&e==='desp')return false;
-  if(['ruta','fab','pt','ag','venc','desp'].includes(S.filtro)&&e!==S.filtro)return false;
+  if(['cola','ruta','fab','pt','ag','venc','desp'].includes(S.filtro)&&e!==S.filtro)return false;
   if(USR&&USR.rol==='vend'&&(o.vendedor||'').toLowerCase()!==USR.nombre.toLowerCase())return false;
   if(S.filtro==='hoy'&&(o.despachada||o.fechaEntrega!==t))return false;
   if(S.vend&&o.vendedor!==S.vend)return false;
   if(q&&![o.ot,o.nota,o.cliente,o.producto,...(o.items||[]).map(i=>i.desc)].join(' ').toLowerCase().includes(q))return false;
   return true});
- const rk={venc:0,ruta:1,ag:2,pt:3,fab:4,desp:5};
+ const rk={venc:0,ruta:1,ag:2,pt:3,fab:4,cola:5,desp:6};
  L.sort((a,b)=>{const ea=est(a),eb=est(b);if(rk[ea]!==rk[eb])return rk[ea]-rk[eb];
   if(ea==='desp')return(b.fechaDespacho||'').localeCompare(a.fechaDespacho||'');
-  if(ea==='pt'||ea==='fab'){if(!!a.urgente!==!!b.urgente)return a.urgente?-1:1;return(a.fechaPT||'').localeCompare(b.fechaPT||'')}
+  if(ea==='pt'||ea==='fab'||ea==='cola'){if(!!a.urgente!==!!b.urgente)return a.urgente?-1:1;return(a.fechaPT||'').localeCompare(b.fechaPT||'')}
   return a.fechaEntrega.localeCompare(b.fechaEntrega)});
  $('#lista').innerHTML=L.length?L.map(card).join(''):`<div class="empty">${DB.ordenes.length?'No hay órdenes con este filtro':(puede('crear')?'Aún no hay órdenes.<br>Toca <b>+</b> para agregar la primera.':'Aún no hay órdenes para ti.')}</div>`}
 function card(o){const e=est(o),t=hoy();let f;
@@ -437,7 +441,8 @@ function card(o){const e=est(o),t=hoy();let f;
  else if(e==='ruta')f=(o.viaje?.chofer?'🚛 '+esc(o.viaje.chofer)+' · ':'')+'🛣 desde '+(o.tSalida?new Date(o.tSalida).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):fmt(o.fechaDespacho));
  else if(e==='venc')f='⏰ Vencida hace '+diasEntre(o.fechaEntrega,t)+' d';
  else if(e==='ag')f=o.fechaEntrega===t?'🚚 Entrega HOY':'🚚 '+fmt(o.fechaEntrega)+' (en '+diasEntre(t,o.fechaEntrega)+' d)';
- else if(e==='fab')f='🔧 En fabricación'+(o.fechaEntrega?' · reservado '+fmt(o.fechaEntrega):'');
+ else if(e==='cola')f='📥 '+estadoCola(o).t;
+ else if(e==='fab')f='🔧 '+Math.round(avanceFab(o)*100)+'%'+(finEstimado(o)?' · fin '+fmt(finEstimado(o)):'')+(riesgoFab(o)?' ⚠':'')+(o.fechaEntrega?' · reservado '+fmt(o.fechaEntrega):'');
  else f='📦 En PT hace '+(o.fechaPT?diasEntre(o.fechaPT,t):0)+' d';
  return`<div class="card st-${e}" onclick="ver('${o.id}')">
  <div class="row"><b class="ot">OT ${esc(o.ot)}</b>${o.urgente&&e!=='desp'?'<span class="pill bad">Urgente</span>':''}<span class="pill ${e}">${etq(o)}</span></div>
@@ -458,8 +463,10 @@ function abrirForm(id,diaPre,pre){const o=id?byId(id):Object.assign({fechaPT:hoy
  <button type="button" class="chip" onclick="syncItems();FORM.items.push({id:uid(),cant:1,desc:'',inc:true});pintarItems(1)">➕ Agregar ítem a mano</button>
  <label>Resumen / producto ${'<span class="mut">(si lo dejas vacío uso el primer ítem)</span>'}</label><input id="fProd" value="${esc(o.producto)}" placeholder="Ej: Tablero NLAB 6 circuitos">
  <input type="hidden" id="fCant" value="${esc(o.cant)}">
- <label style="display:flex;align-items:center;gap:8px;color:var(--tx)"><input type="checkbox" id="fFab" style="width:auto" ${o.enFab?'checked':''} onchange="$('#fPTw').hidden=this.checked"> 🔧 Todavía en fabricación</label>
- <div id="fPTw" ${o.enFab?'hidden':''}><label>Llegó a PT</label><input type="date" id="fPT" value="${o.fechaPT||hoy()}"></div>
+ ${o.despachada?'':`<label>Estado</label><div class="radio" id="fEst">${[['cola','📥 Aprobada (en cola)'],['fab','🔧 En fabricación'],['pt','📦 En PT']].map(([k,l])=>`<button type="button" class="chip ${(o.enCola?'cola':o.enFab?'fab':'pt')===k?'on':''}" data-e="${k}" onclick="selV(this);$('#fPTw').hidden=this.dataset.e!=='pt'">${l}</button>`).join('')}</div>`}
+ <div class="grid2"><div><label for="fTipo">Tipo de tablero</label><select id="fTipo" onchange="$('#fDias').value=diasTipo(this.value)||''"><option value="">—</option>${DB.cfg.tipos.map(t=>`<option ${o.tipo===t.n?'selected':''}>${esc(t.n)}</option>`).join('')}</select></div><div><label for="fDias">Días de fabricación</label><input id="fDias" inputmode="numeric" value="${esc(o.diasEst||diasTipo(o.tipo)||'')}"></div></div>
+ <label for="fComp">Fecha compromiso con el cliente</label><input type="date" id="fComp" value="${o.fechaCompromiso||''}">
+ <div id="fPTw" ${o.enFab||o.enCola?'hidden':''}><label>Llegó a PT</label><input type="date" id="fPT" value="${o.fechaPT||hoy()}"></div>
  <label>Vendedor</label><div class="radio" id="fVend">${vs}</div>
  <label>Fecha de entrega (opcional)</label>
  <div class="grid2"><input type="date" id="fFE" value="${o.fechaEntrega||''}" oninput="$('#fHint').innerHTML=hintFecha(this.value,'${id||''}')"><button type="button" class="btn sec" style="margin:0" onclick="const s=sugerir('${id||''}');$('#fFE').value=s;$('#fHint').innerHTML=hintFecha(s,'${id||''}')">✨ Sugerir</button></div>
@@ -467,7 +474,7 @@ function abrirForm(id,diaPre,pre){const o=id?byId(id):Object.assign({fechaPT:hoy
  <label style="display:flex;align-items:center;gap:8px;color:var(--tx)"><input type="checkbox" id="fUrg" style="width:auto" ${o.urgente?'checked':''}> Urgente</label>
  ${id?'':'<label>Nota inicial</label><textarea id="fNotaIni" rows="2" placeholder="Ej: cliente retira en sitio"></textarea>'}
  <button class="btn" onclick="guardar('${id||''}')">💾 Guardar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`);
- pintarAdj();pintarItems()}
+ pintarAdj();pintarItems();if(!o.tipo&&o.items?.length){const tp=tipoDe(o.items.map(i=>i.desc).join(' ')+' '+(o.producto||''));if(tp){$('#fTipo').value=tp;if(!$('#fDias').value)$('#fDias').value=diasTipo(tp)}}}
 function nuevoVend(b){const v=FORM.vendNota;if(!DB.cfg.vendedores.includes(v)){DB.cfg.vendedores.push(v);save()}b.textContent=v;b.setAttribute('onclick','selV(this)');selV(b);toast(v+' agregado a tus vendedores')}
 function selV(b){b.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
 function pintarAdj(msg){const a=FORM.adj;$('#fAdj').innerHTML=msg?`<div class="load">${msg}</div>`:
@@ -486,6 +493,7 @@ async function alSubir(f){if(!f)return;syncItems();FORM.adj={id:uid(),name:f.nam
   if(d.vendedor){const v=vendedorDe(d.vendedor);if(v)document.querySelectorAll('#fVend .chip').forEach(b=>b.classList.toggle('on',b.textContent===v));
    else{FORM.vendNota=d.vendedor;$('#fVend').insertAdjacentHTML('beforeend',`<button type="button" class="chip" onclick="nuevoVend(this)">➕ ${esc(d.vendedor)} (de la nota)</button>`)}}
   FORM.items=FORM.items.filter(i=>i.desc).concat(it.map(i=>({id:uid(),...i,inc:true})));pintarAdj();pintarItems();
+  const tp=tipoDe(it.map(i=>i.desc).join(' '));if(tp&&!$('#fTipo').value){$('#fTipo').value=tp;$('#fDias').value=diasTipo(tp)}
   toast(it.length?`Encontré ${it.length} ítem(s). Revisa y desmarca los que no van.`:'No encontré ítems (¿es escaneada?). Agrégalos a mano.')}
  catch(e){console.error(e);pintarAdj();toast('No pude leer el PDF. Quedó adjunto; agrega los ítems a mano.')}}
 async function guardar(id){syncItems();
@@ -500,9 +508,10 @@ async function guardar(id){syncItems();
   subirAdj(FORM.adj.id,FORM.adj,FORM.adj.file);
   const viejo=o.adj&&o.adj.id;delete FORM.adj.file;if(viejo&&viejo!==FORM.adj.id)setTimeout(()=>limpiarAdj(viejo),0)}
  if(id&&o.fechaEntrega&&fe&&fe!==o.fechaEntrega){o.reprog=(o.reprog||0)+1;o.notas.push({t:ahora(),a:quien(),sis:1,txt:`Reprogramada de ${fmt(o.fechaEntrega)} a ${fmt(fe)}`})}
- const fab=$('#fFab').checked;if(!id&&FORM.extra.trelloId)Object.assign(o,FORM.extra);
- Object.assign(o,{ot,nota:g('#fNota'),cliente:cli,producto:prod,cant:g('#fCant'),enFab:fab,fechaPT:fab?'':(g('#fPT')||hoy()),vendedor:v?v.textContent:'',fechaEntrega:fe,urgente:$('#fUrg').checked,
+ const ef=o.despachada?'pt':($('#fEst .chip.on')?.dataset.e||'pt'),fab=ef==='fab',cola=ef==='cola',iniNueva=fab&&!o.enFab;if(!id&&FORM.extra.trelloId)Object.assign(o,FORM.extra);
+ Object.assign(o,{ot,nota:g('#fNota'),cliente:cli,producto:prod,cant:g('#fCant'),enFab:fab,enCola:cola,fechaPT:ef==='pt'?(o.fechaPT&&o.despachada?o.fechaPT:(g('#fPT')||hoy())):'',tipo:$('#fTipo').value,diasEst:+g('#fDias')||0,fechaCompromiso:g('#fComp'),vendedor:v?v.textContent:'',fechaEntrega:fe,urgente:$('#fUrg').checked,
   adj:FORM.adj||null,items:inc.map(i=>({id:i.id||uid(),cant:i.cant,desc:i.desc,ok:!!i.ok,d:i.d||''}))});
+ if(iniNueva){o.tInicio=o.tInicio||ahora();if(!o.etapas||!o.etapas.length)o.etapas=DB.cfg.etapas.map(n=>({n,ok:false}))}
  if(!id){const ni=$('#fNotaIni')?.value.trim();if(ni)o.notas.push({t:ahora(),a:quien(),txt:ni});DB.ordenes.push(o)}
  save();render();
  if(resto.length){openSheet(`<h3>Quedaron ${resto.length} ítem(s) de la nota sin OT</h3><div class="box">${resto.map(i=>`<div class="kv"><span>${esc(i.cant)}</span><b>${esc(i.desc)}</b></div>`).join('')}</div>
@@ -518,11 +527,12 @@ function ver(id){const o=byId(id),e=est(o),t=hoy();
  const kv=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
  openSheet(`<div class="row"><h3 style="margin:0">OT ${esc(o.ot)}</h3><span class="pill ${e}">${etq(o)}</span></div>
  <div class="box" style="margin-top:12px">${kv('Cliente',esc(o.cliente))}${kv('Producto',esc(o.producto))}${o.cant?kv('Cantidad',esc(o.cant)):''}${kv('Nota de entrega',esc(o.nota||'—'))}${kv('Vendedor',esc(o.vendedor||'—'))}
- ${o.entregada?kv('Entregada',fmt(o.fechaEntregado)+(o.entrega?.recibe?' · '+esc(o.entrega.recibe):'')):''}${kv('Llegó a PT',fmt(o.fechaPT)+(o.fechaPT?` (${diasEntre(o.fechaPT,o.fechaDespacho||t)} d)`:''))}${kv('Entrega programada',fmt(o.fechaEntrega))}${o.despachada?kv('Despachada',fmt(o.fechaDespacho)):''}${o.viaje&&(o.viaje.chofer||o.viaje.vehiculo)?kv('Viaje',esc([o.viaje.chofer,o.viaje.vehiculo].filter(Boolean).join(' · '))):''}${o.reprog?kv('Reprogramaciones',o.reprog):''}</div>
+ ${o.entregada?kv('Entregada',fmt(o.fechaEntregado)+(o.entrega?.recibe?' · '+esc(o.entrega.recibe):'')):''}${o.tipo||compromiso(o)?kv('Tipo / compromiso',esc(o.tipo||'—')+(diasDe(o)?' · '+diasDe(o)+' d':'')+(o.fechaCompromiso?' · '+fmt(o.fechaCompromiso):'')):''}${o.enCola?kv('Iniciar a más tardar',limiteInicio(o)?fmt(limiteInicio(o)):'—'):''}${kv('Llegó a PT',fmt(o.fechaPT)+(o.fechaPT?` (${diasEntre(o.fechaPT,o.fechaDespacho||t)} d)`:''))}${kv('Entrega programada',fmt(o.fechaEntrega))}${o.despachada?kv('Despachada',fmt(o.fechaDespacho)):''}${o.viaje&&(o.viaje.chofer||o.viaje.vehiculo)?kv('Viaje',esc([o.viaje.chofer,o.viaje.vehiculo].filter(Boolean).join(' · '))):''}${o.reprog?kv('Reprogramaciones',o.reprog):''}</div>
  ${botonesDetalle(o)}
  ${o.adj?`<button class="btn sec" onclick="verAdj('${id}')">${o.adj.type==='application/pdf'?'📄':'🖼️'} Ver nota adjunta</button>`:(puede('crear')?`<button class="btn sec" onclick="abrirForm('${id}')">📎 Adjuntar nota de entrega</button>`:'')}
  ${o.trelloUrl?`<div class="mut sm" style="margin-top:8px">🔗 Importada de Trello · <span style="user-select:all">${esc(o.trelloUrl)}</span></div>`:''}
  ${pruebaEntrega(o)}
+ ${etapasHTML(o)}
  ${checklist(o)}
  <h3 style="margin-top:20px">🕒 Historial y notas</h3>
  <input id="nTxt" placeholder="Escribe una nota como ${esc(quien())}…">
@@ -533,14 +543,15 @@ function botonesDetalle(o){const id=o.id,b=[];
   if(o.enRuta){if(puede('despachar'))b.push(`<button class="btn ok" onclick="formEntrega('${id}')">✅ Confirmar entrega</button>`);if(puede('crear'))b.push(`<button class="btn sec" onclick="deshacer('${id}')">↩ Deshacer salida</button>`)}
   else{if(o.entrega)b.push(`<button class="btn" onclick="comprobante('${id}')">🧾 Comprobante</button>`);if(puede('crear'))b.push(`<button class="btn sec" onclick="${o.entregada?'deshacerEntrega':'deshacer'}('${id}')">↩ Deshacer ${o.entregada?'entrega':'despacho'}</button>`)}
   b.push(`<button class="btn sec" onclick="copiar(msjVend('${id}'))">📋 Mensaje</button>`);return`<div class="grid2">${b.join('')}</div>`}
+ if(o.enCola&&puede('crear'))b.push(`<button class="btn" onclick="confIniciar('${id}')">🔧 Iniciar fabricación</button>`);
  if(o.enFab&&puede('crear'))b.push(`<button class="btn ok" onclick="llegoPT('${id}')">📦 Llegó a PT</button>`);
  if(puede('agendar'))b.push(`<button class="btn" onclick="agendar('${id}')">📅 ${o.fechaEntrega?'Reprogramar':'Agendar'}</button>`);
- if(!o.enFab&&puede('despachar'))b.push(`<button class="btn ok" onclick="despachar('${id}')">✅ Despachar</button>`);
+ if(!o.enFab&&!o.enCola&&puede('despachar'))b.push(`<button class="btn ok" onclick="despachar('${id}')">✅ Despachar</button>`);
  if(puede('crear'))b.push(`<button class="btn sec" onclick="abrirForm('${id}')">✏️ Editar</button>`);
  if(puede('crear'))b.push(`<button class="btn sec" onclick="etiqueta('${id}')">🏷 Etiqueta QR</button>`);
  b.push(`<button class="btn sec" onclick="copiar(msjVend('${id}'))">📋 Mensaje</button>`);
  return`<div class="grid2">${b.join('')}</div>`}
-function llegoPT(id){const o=byId(id);o.enFab=false;o.fechaPT=hoy();o.tPT=ahora();o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Llegó a producto terminado'});save();ver(id);render();toast('📦 Pasó a producto terminado')}
+function llegoPT(id){const o=byId(id);o.enFab=false;o.enCola=false;(o.etapas||[]).forEach(e=>{if(!e.ok){e.ok=true;e.t=ahora();e.por=quien()}});o.fechaPT=hoy();o.tPT=ahora();o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Llegó a producto terminado'});save();ver(id);render();toast('📦 Pasó a producto terminado')}
 function progreso(o){const it=o.items||[];return{tot:it.length,listos:it.filter(i=>i.ok||i.d).length,desp:it.filter(i=>i.d).length}}
 function checklist(o){const it=o.items||[];if(!it.length)return'';const p=progreso(o),pend=it.some(i=>!i.d);
  return`<h3 style="margin-top:20px" class="row">📋 Ítems a despachar <span class="pill ${p.listos===p.tot?'desp':'ag'}" id="chkN">${p.listos}/${p.tot}</span></h3>
@@ -605,12 +616,13 @@ function vHoy(){const t=hoy(),man=sumar(t,1),M=misOrdenes();
  const listos=paraHoy.filter(o=>{const p=progreso(o);return p.tot&&p.listos===p.tot}).length;
  const k=(v,l,cls)=>`<div class="kpi ${cls&&v?cls:''}"><b>${v}</b><span>${l}</span></div>`;
  const sec=(ic,tit,L,nota)=>L.length?`<div class="sec"><h3>${ic} ${tit}</h3><span class="pill">${L.length}</span></div>${nota?`<div class="mut sm" style="margin:-4px 0 8px">${nota}</div>`:''}${L.map(card).join('')}`:'';
- const todo=venc.length+riesgo.length+paraHoy.length+ruta.length+entr.length+manana.length+sinF.length;
+ const todo=(puede('crear')?colaOrdenada().filter(o=>{const x=holgura(o);return x!==null&&x<=0}).length:0)+venc.length+riesgo.length+paraHoy.length+ruta.length+entr.length+manana.length+sinF.length;
  const acc=`<div class="grid2" style="margin:0 0 10px">${puede('despachar')?'<button class="btn" style="margin:0" onclick="armarViaje()">🚛 Armar viaje</button>':''}<button class="btn sec" style="margin:0" onclick="$(\'#qrFile\').click()">📷 Escanear QR</button></div>${TR.nuevas&&puede('trello')?`<button class="btn sec" style="margin:0 0 10px" onclick="trelloImportar()">📥 ${TR.nuevas} tarjeta(s) nueva(s) en Trello</button>`:''}`;
  return acc+`<div class="mut sm" style="margin-bottom:8px;text-transform:capitalize">${new Date().toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})}${esDiaDesp(t)?` · ${carga(t)}/${DB.cfg.cupo} cupos usados`:' · hoy no es día de despacho'}</div>
  <div class="kpis">${k(paraHoy.length,'Por despachar')}${k(ruta.length,'En ruta')}${k(entr.length,'Entregadas')}${k(venc.length,'Vencidas','red')}</div>
  ${sec('⏰','Vencidas',venc,'Tenían fecha y no han salido. Reprograma o despacha.')}
  ${sec('⚠️','En riesgo',riesgo,'Agendadas para hoy o mañana y siguen en fabricación.')}
+ ${puede('crear')?sec('🏭','Debe iniciar fabricación',colaOrdenada().filter(o=>{const x=holgura(o);return x!==null&&x<=0}),'Si no inician hoy, no llegan a la fecha compromiso.'):''}
  ${sec('🚚','Para despachar hoy',paraHoy,paraHoy.length?`${listos} de ${paraHoy.length} con todos los ítems verificados.`:'')}
  ${ruta.length?`<div class="sec"><h3>🛣 En ruta</h3><span class="pill">${ruta.length}</span></div><div class="mut sm" style="margin:-4px 0 8px">Confirma la entrega cuando lleguen al cliente.</div>${viajesEnCurso(ruta)}`:''}
  ${viajesTerminados()}
@@ -754,11 +766,12 @@ function detectar(prev,d,por){if(!USR||!prev||por===USR.nombre)return;if(USR.rol
  if(prev.enFab&&!d.enFab&&r==='desp')return avisar('📦 OT '+d.ot+' lista en PT',d.cliente,d.id)}
 
 /* ========= TRELLO AUTOMÁTICO ========= */
-function moverTerminadas(pt){let n=0;pt.forEach(c=>{const o=DB.ordenes.find(x=>x.trelloId===c.id);if(o&&o.enFab&&!o.despachada){o.enFab=false;o.fechaPT=hoy();o.tPT=ahora();o.trelloList='pt';o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Llegó a producto terminado (movida en Trello)'});n++}});return n}
+function moverAProceso(fab){let n=0;fab.forEach(c=>{const o=DB.ordenes.find(x=>x.trelloId===c.id);if(o&&o.enCola&&!o.despachada){iniciarFab(o.id,'movida en Trello');o.trelloList='fab';n++}});return n}
+function moverTerminadas(pt){let n=0;pt.forEach(c=>{const o=DB.ordenes.find(x=>x.trelloId===c.id);if(o&&(o.enFab||o.enCola)&&!o.despachada){o.enFab=false;o.enCola=false;o.fechaPT=hoy();o.tPT=ahora();o.trelloList='pt';o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Llegó a producto terminado (movida en Trello)'});n++}});return n}
 async function trelloRevisar(){if(!TR.ok||!puede('trello')||(NUBE.on&&!NUBE.base))return;
- try{const prm={fields:'name,idList'};const[fab,pt]=await Promise.all([TR.fab?trello('lists/'+TR.fab+'/cards',prm):[],TR.pt?trello('lists/'+TR.pt+'/cards',prm):[]]);
-  const n=moverTerminadas(pt);if(n){save();avisar('📦 Trello',n+' OT pasaron a producto terminado')}
-  TR.nuevas=[...fab,...pt].filter(c=>!DB.ordenes.some(o=>o.trelloId===c.id)).length;if(USR&&S.tab==='hoy'&&!sheetOpen)render()}catch(e){console.warn('Trello',e)}}
+ try{const prm={fields:'name,idList'};const[fab,pt,apr]=await Promise.all([TR.fab?trello('lists/'+TR.fab+'/cards',prm):[],TR.pt?trello('lists/'+TR.pt+'/cards',prm):[],TR.apr?trello('lists/'+TR.apr+'/cards',prm):[]]);
+  const n=moverTerminadas(pt)+moverAProceso(fab);if(n){save();avisar('🔄 Trello',n+' OT se actualizaron desde Trello')}
+  TR.nuevas=[...fab,...pt,...apr].filter(c=>!DB.ordenes.some(o=>o.trelloId===c.id)).length;if(USR&&S.tab==='hoy'&&!sheetOpen)render()}catch(e){console.warn('Trello',e)}}
 
 /* ========= CAUSAS (mejora continua) ========= */
 function chipsCausas(inp){return chipsLista(inp,DB.cfg.causas)}
@@ -775,6 +788,71 @@ function vListas(){const L=(k,tit,ph)=>`<div class="box"><h3 style="margin-top:0
 function renL(k,i,v){v=v.trim();if(!v)return render();DB.cfg[k][i]=v;save()}
 function delL(k,i){DB.cfg[k].splice(i,1);save();render()}
 function addL(k){const v=$('#nl_'+k).value.trim();if(!v)return;DB.cfg[k].push(v);save();render()}
+
+/* ========= PRODUCCIÓN: cola de aprobadas, etapas y fechas límite ========= */
+const esLab=s=>DB.cfg.diasLab.includes(parse(s).getDay());
+function sumarLab(s,n){let d=s,k=0;while(k<n){d=sumar(d,1);if(esLab(d))k++}return d}
+function restarLab(s,n){let d=s,k=0;while(k<n){d=sumar(d,-1);if(esLab(d))k++}return d}
+function labEntre(a,b){if(!a||!b)return 0;let n=0,d=a;while(d<b){d=sumar(d,1);if(esLab(d))n++}return n}
+function tipoDe(txt){const T=String(txt||'').toUpperCase();const ts=[...DB.cfg.tipos].sort((a,b)=>b.n.length-a.n.length);
+ const t=ts.find(t=>new RegExp('\\b'+t.n.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(T));return t?t.n:''}
+const diasTipo=n=>(DB.cfg.tipos.find(t=>t.n===n)||{}).d||0;
+const diasDe=o=>+o.diasEst||diasTipo(o.tipo)||0;
+const compromiso=o=>o.fechaCompromiso||o.fechaEntrega||'';
+function avanceFab(o){const e=o.etapas||[];return e.length?e.filter(x=>x.ok).length/e.length:0}
+function finEstimado(o){const d=diasDe(o);if(!d)return'';const rest=Math.ceil(d*(1-avanceFab(o)));if(!rest)return hoy();
+ const ini=o.tInicio?o.tInicio.slice(0,10):hoy(),porPlan=sumarLab(ini,d),porAvance=sumarLab(hoy(),rest);return porAvance>porPlan?porAvance:porPlan}
+function limiteInicio(o){const c=compromiso(o),d=diasDe(o);return c&&d?restarLab(c,d):''}
+function holgura(o){const l=limiteInicio(o);if(!l)return null;return l<hoy()?-labEntre(l,hoy()):labEntre(hoy(),l)}
+function estadoCola(o){const h=holgura(o);if(h===null)return{c:'',t:diasDe(o)?'Sin fecha compromiso':'Falta tipo o días'};
+ if(h<0)return{c:'bad',t:`Atrasada: debió iniciar el ${fmt(limiteInicio(o))}`};if(h===0)return{c:'ag',t:'Iniciar HOY para cumplir'};
+ return{c:h<=2?'ag':'desp',t:`Iniciar a más tardar ${fmt(limiteInicio(o))} · ${h} día(s) de holgura`}}
+function riesgoFab(o){const f=finEstimado(o),c=compromiso(o);return f&&c&&f>c}
+function iniciarFab(id,motivo){const o=byId(id);o.enCola=false;o.enFab=true;o.tInicio=ahora();o.etapas=DB.cfg.etapas.map(n=>({n,ok:false}));
+ o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Inició fabricación'+(motivo?' ('+motivo+')':'')+(diasDe(o)?' · fin estimado '+fmt(finEstimado(o)):'')});return o}
+function confIniciar(id){const o=byId(id),fin=sumarLab(hoy(),diasDe(o)),c=compromiso(o);
+ preguntar(`¿Iniciar la fabricación de la OT ${esc(o.ot)}?${diasDe(o)?`<div class="mut sm" style="font-weight:400;margin-top:6px">${esc(o.tipo||'')} · ${diasDe(o)} días hábiles → terminaría el ${fmt(fin)}${c?(fin>c?` <b style="color:var(--bad)">después del compromiso (${fmt(c)})</b>`:` (compromiso ${fmt(c)})`):''}</div>`:''}`,
+  ()=>{iniciarFab(id);save();closeSheet();render();toast('🔧 Fabricación iniciada')},'🔧 Sí, iniciar',0)}
+function etapa(id,k,el){const o=byId(id),e=o.etapas[k];e.ok=el?el.checked:!e.ok;if(e.ok){e.t=ahora();e.por=quien()}else{delete e.t;delete e.por}
+ if(e.ok)o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Terminó etapa: '+e.n});save();
+ if(o.etapas.every(x=>x.ok)){const sig=colaOrdenada()[0];preguntar(`✅ La OT ${esc(o.ot)} terminó todas las etapas. ¿Pasa a producto terminado?${sig?`<div class="mut sm" style="font-weight:400;margin-top:6px">Se libera capacidad. Siguiente sugerida: <b>OT ${esc(sig.ot)}</b> · ${esc(estadoCola(sig).t)}</div>`:''}`,()=>{llegoPT(id);if(sig)setTimeout(()=>avisar('🏭 Capacidad libre','Siguiente sugerida: OT '+sig.ot),300)},'📦 Sí, pasa a PT',0,()=>{closeSheet();render()});return}
+ if(S.vista==='ver'){const y=$('#sheetBody').scrollTop;ver(id);$('#sheetBody').scrollTop=y}render()}
+function colaOrdenada(){return misOrdenes().filter(o=>o.enCola&&!o.despachada).sort((a,b)=>{const ha=holgura(a),hb=holgura(b);
+ if(!!a.urgente!==!!b.urgente)return a.urgente?-1:1;if(ha===null&&hb===null)return(a.creada||'').localeCompare(b.creada||'');if(ha===null)return 1;if(hb===null)return-1;return ha-hb})}
+function etapasHTML(o){const e=o.etapas||[];if(!e.length||!o.enFab)return'';const p=avanceFab(o),f=finEstimado(o),c=compromiso(o);
+ return`<h3 style="margin-top:20px" class="row">🏭 Etapas de fabricación <span class="pill ${riesgoFab(o)?'bad':'fab'}">${Math.round(p*100)}%</span></h3>
+ <div class="bar"><i style="width:${p*100}%;background:var(--fab)"></i></div>
+ <div class="mut sm" style="margin-bottom:8px">${o.tipo?esc(o.tipo)+' · ':''}${diasDe(o)?diasDe(o)+' días hábiles · ':''}${f?'Fin estimado '+fmt(f):''}${c?' · compromiso '+fmt(c):''}${riesgoFab(o)?' · <b style="color:var(--bad)">en riesgo</b>':''}</div>
+ ${e.map((x,k)=>`<label class="chk ${x.ok?'on':''}"><input type="checkbox" ${x.ok?'checked':''} ${puede('crear')?'':'disabled'} onchange="etapa('${o.id}',${k},this)"><div>${esc(x.n)}${x.ok?`<small>✓ ${esc(x.por||'')} · ${x.t?hora(x.t):''}</small>`:''}</div></label>`).join('')}`}
+function cardProd(o){const c=compromiso(o);let extra='';
+ if(o.enCola){const s=estadoCola(o);extra=`<div class="sm" style="margin-top:6px;font-weight:600;color:var(--${s.c==='bad'?'bad':s.c==='ag'?'ag':'mut'})">${esc(s.t)}</div>${puede('crear')?`<div class="grid2" style="margin-top:4px"><button class="btn" style="margin:6px 0 0" onclick="event.stopPropagation();confIniciar('${o.id}')">🔧 Iniciar fabricación</button></div>`:''}`}
+ else if(o.enFab){const p=avanceFab(o),sig=(o.etapas||[]).find(x=>!x.ok),k=(o.etapas||[]).indexOf(sig);
+  extra=`<div class="bar" style="margin:8px 0 4px"><i style="width:${p*100}%;background:var(--fab)"></i></div><div class="row sm"><span class="mut">${sig?'Etapa actual: '+esc(sig.n):'Todas las etapas listas'}</span><b style="color:var(--${riesgoFab(o)?'bad':'mut'})">${finEstimado(o)?'Fin '+fmt(finEstimado(o)):''}${riesgoFab(o)?' ⚠':''}</b></div>
+  ${sig&&puede('crear')?`<button class="btn sec" style="margin:6px 0 0" onclick="event.stopPropagation();etapa('${o.id}',${k})">✓ Terminé ${esc(sig.n)}</button>`:''}`}
+ return`<div class="card st-${est(o)}" onclick="ver('${o.id}')"><div class="row"><b class="ot">OT ${esc(o.ot)}</b>${o.urgente?'<span class="pill bad">Urgente</span>':''}<span class="pill ${est(o)}">${etq(o)}</span></div>
+ <div class="cli">${esc(o.cliente)}</div><div class="prod">${esc(o.producto)}</div><div class="row mut sm"><span>${o.tipo?'🏷 '+esc(o.tipo)+(diasDe(o)?' · '+diasDe(o)+' d':''):'🏷 Sin tipo'}</span><span>${c?'📌 Compromiso '+fmt(c):''}</span></div>${extra}</div>`}
+function vProd(){const fab=misOrdenes().filter(o=>o.enFab&&!o.despachada).sort((a,b)=>(finEstimado(a)||'9').localeCompare(finEstimado(b)||'9')),cola=colaOrdenada();
+ const riesgo=fab.filter(riesgoFab).length+cola.filter(o=>{const h=holgura(o);return h!==null&&h<0}).length,hoyIni=cola.filter(o=>holgura(o)===0).length;
+ const k=(v,l,cls)=>`<div class="kpi ${cls&&v?cls:''}"><b>${v}</b><span>${l}</span></div>`;
+ const restante=fab.reduce((s,o)=>s+Math.ceil(diasDe(o)*(1-avanceFab(o))),0);
+ return`${puede('trello')&&TR.ok&&TR.apr?`<button class="btn sec" style="margin:0 0 12px" onclick="trelloImportar()">⬇ Traer aprobadas de Trello${TR.nuevas?' ('+TR.nuevas+' nuevas)':''}</button>`:''}
+ <div class="kpis">${k(fab.length,'En fabricación')}${k(cola.length,'En cola')}${k(hoyIni,'Iniciar hoy','red')}${k(riesgo,'En riesgo','red')}</div>
+ <div class="mut sm">Carga pendiente en fabricación: <b>${restante} día(s) hábil(es)</b> de trabajo sumando todas las OT.</div>
+ <div class="sec"><h3>🔧 En fabricación</h3><span class="pill">${fab.length}</span></div>${fab.map(cardProd).join('')||'<div class="mut sm">Nada en fabricación.</div>'}
+ <div class="sec"><h3>📥 Aprobadas en cola</h3><span class="pill">${cola.length}</span></div><div class="mut sm" style="margin:-4px 0 8px">Ordenadas por fecha límite para iniciar: arriba lo más urgente.</div>
+ ${cola.map(cardProd).join('')||`<div class="mut sm">No hay aprobadas en cola.${puede('crear')?' Créalas con + eligiendo "Aprobada", o tráelas de Trello.':''}</div>`}
+ ${vTiemposReales()}`}
+function vTiemposReales(){const g={};DB.ordenes.filter(o=>o.tipo&&o.tInicio&&o.tPT).forEach(o=>{(g[o.tipo]=g[o.tipo]||[]).push(Math.max(1,labEntre(o.tInicio.slice(0,10),o.tPT.slice(0,10))))});
+ const R=Object.entries(g);if(!R.length)return'';
+ return`<div class="box" style="margin-top:16px"><h3 style="margin-top:0">📏 Tiempos reales vs estimados</h3><table><tr><th>Tipo</th><th>OT</th><th>Real prom.</th><th>Estimado</th><th></th></tr>${R.map(([t,L])=>{const p=L.reduce((a,b)=>a+b,0)/L.length,e=diasTipo(t),r=Math.round(p);
+  return`<tr><td>${esc(t)}</td><td>${L.length}</td><td><b>${p.toFixed(1)} d</b></td><td>${e} d</td><td>${puede('ajustes')&&r!==e&&L.length>=2?`<button class="chip" onclick="ajTipo(${esc(JSON.stringify(t))},${r})">Usar ${r} d</button>`:''}</td></tr>`}).join('')}</table>
+ <div class="mut sm" style="margin-top:6px">Con cada OT terminada la estimación se vuelve más precisa. Ajusta los días para que las fechas límite sean reales.</div></div>`}
+function ajTipo(t,d){const x=DB.cfg.tipos.find(y=>y.n===t);if(x){x.d=d;save();render();toast(t+': ahora '+d+' días')}}
+function vTiposEtapas(){return`<div class="box"><h3 style="margin-top:0">🏷 Tipos de tablero y días de fabricación</h3>${DB.cfg.tipos.map((t,i)=>`<div class="vrow"><input value="${esc(t.n)}" onchange="DB.cfg.tipos[${i}].n=this.value.trim()||DB.cfg.tipos[${i}].n;save()"><input value="${t.d}" inputmode="numeric" style="max-width:80px" onchange="DB.cfg.tipos[${i}].d=Math.max(1,+this.value||1);save()" aria-label="Días"><button onclick="DB.cfg.tipos.splice(${i},1);save();render()">✕</button></div>`).join('')}
+ <div class="vrow"><input id="ntN" placeholder="Nuevo tipo"><input id="ntD" placeholder="Días" inputmode="numeric" style="max-width:80px"><button style="color:var(--pri)" onclick="const n=$('#ntN').value.trim(),d=+$('#ntD').value;if(!n||!d)return toast('Escribe tipo y días');DB.cfg.tipos.push({n,d});save();render()">＋</button></div>
+ <div class="mut sm">Días hábiles desde que inicia la fabricación hasta que llega a PT.</div>
+ <label>Días hábiles del galpón</label><div class="radio">${[1,2,3,4,5,6,0].map(d=>`<button class="chip ${DB.cfg.diasLab.includes(d)?'on':''}" onclick="const a=DB.cfg.diasLab;a.includes(${d})?a.splice(a.indexOf(${d}),1):a.push(${d});if(!a.length)a.push(${d});save();render()">${DIAS[d]}</button>`).join('')}</div></div>
+ ${(()=>{const k='etapas';return`<div class="box"><h3 style="margin-top:0">🏭 Etapas de fabricación</h3><div class="mut sm">En este orden se tildan en cada OT. Los cambios aplican a las OT que inicien después.</div>${DB.cfg.etapas.map((v,i)=>`<div class="vrow"><input value="${esc(v)}" onchange="renL('${k}',${i},this.value)"><button onclick="delL('${k}',${i})">✕</button></div>`).join('')}<div class="vrow"><input id="nl_${k}" placeholder="Agregar etapa"><button style="color:var(--pri)" onclick="addL('${k}')">＋</button></div></div>`})()}`}
 
 /* ========= CALENDARIO ========= */
 function vCal(){if(!S.mes){const d=new Date();S.mes=[d.getFullYear(),d.getMonth()]}if(!S.dia)S.dia=hoy();
@@ -811,20 +889,20 @@ function vAjustes(){const c=DB.cfg;
  <div class="kv"><span>Reprogramaciones totales</span><b>${rep}</b></div><div class="kv"><span>Despachos parciales</span><b>${DB.ordenes.reduce((s,o)=>s+(o.parciales||0),0)}</b></div>
  <table style="margin-top:8px"><tr><th>Vendedor</th><th>Activas</th><th>Desp.</th><th>A tiempo</th><th>Reprog.</th></tr>${filas}</table>
  <div class="mut sm" style="margin-top:8px">Meta sugerida: 90% a tiempo. Revisa los motivos de reprogramación en las notas para atacar la causa más repetida.</div></div>
- ${vCausas()}${puede('ajustes')?`${NUBE.on?vUsuarios():''}${vTrello()}${vListas()}<div class="box"><h3 style="margin-top:0">👥 Vendedores</h3>${c.vendedores.map((v,i)=>`<div class="vrow"><input value="${esc(v)}" onchange="renV(${i},this.value)"><button onclick="delV(${i})">✕</button></div>`).join('')}
+ ${vCausas()}${puede('ajustes')?`${NUBE.on?vUsuarios():''}${vTrello()}${vTiposEtapas()}${vListas()}<div class="box"><h3 style="margin-top:0">👥 Vendedores</h3>${c.vendedores.map((v,i)=>`<div class="vrow"><input value="${esc(v)}" onchange="renV(${i},this.value)"><button onclick="delV(${i})">✕</button></div>`).join('')}
  <button class="btn sec" onclick="addV()">➕ Agregar vendedor</button></div>
  <div class="box"><h3 style="margin-top:0">🚚 Días de despacho</h3><div class="radio">${[1,2,3,4,5,6,0].map(d=>`<button class="chip ${c.dias.includes(d)?'on':''}" onclick="togD(${d})">${DIAS[d]}</button>`).join('')}</div>
  <label>Máximo de entregas por día</label><div class="grid2" style="grid-template-columns:50px 1fr 50px"><button class="btn sec" style="margin:0" onclick="cupo(-1)">−</button><div class="big" style="text-align:center">${c.cupo}</div><button class="btn sec" style="margin:0" onclick="cupo(1)">+</button></div></div>
  <div class="box"><h3 style="margin-top:0">💾 Respaldo</h3><div class="mut sm">${NUBE.on?'Los datos se guardan en la nube y en cada teléfono. Igual puedes copiar un respaldo de órdenes, ítems y notas.':'Los datos se guardan solo en este teléfono. Haz un respaldo de vez en cuando y guárdalo en WhatsApp o Drive.'}</div>
  <button class="btn sec" onclick="copiar(JSON.stringify(DB))">📋 Copiar respaldo</button><button class="btn sec" onclick="restaurar()">♻️ Restaurar respaldo</button><button class="btn sec" onclick="copiar(csv())">📊 Copiar tabla para Excel</button></div>`:''}
- <div class="mut sm" style="text-align:center">Entregas PT v2.2 · ${DB.ordenes.length} órdenes registradas</div>`}
+ <div class="mut sm" style="text-align:center">Entregas PT v2.3 · ${DB.ordenes.length} órdenes registradas</div>`}
 function renV(i,v){v=v.trim();if(!v)return render();const old=DB.cfg.vendedores[i];DB.cfg.vendedores[i]=v;DB.ordenes.forEach(o=>{if(o.vendedor===old)o.vendedor=v});save();toast('Vendedor actualizado')}
 function delV(i){preguntar('¿Quitar a '+esc(DB.cfg.vendedores[i])+'? Sus órdenes se conservan.',()=>{DB.cfg.vendedores.splice(i,1);save();closeSheet();render()},'Quitar',1)}
 function addV(){openSheet(`<h3>Nuevo vendedor</h3><label for="vN">Nombre (como sale en las notas)</label><input id="vN" placeholder="Ej: ARNALDO RIVERO"><button class="btn" onclick="const v=$('#vN').value.trim();if(!v)return toast('Escribe el nombre');DB.cfg.vendedores.push(v);save();closeSheet();render()">Agregar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`);setTimeout(()=>$('#vN')?.focus(),50)}
 function togD(d){const a=DB.cfg.dias;a.includes(d)?a.splice(a.indexOf(d),1):a.push(d);if(!a.length){a.push(d);return toast('Debe haber al menos un día')}save();render()}
 function cupo(d){DB.cfg.cupo=Math.max(1,Math.min(50,DB.cfg.cupo+d));save();render()}
-function csv(){const h=['OT','Nota entrega','Cliente','Producto','Cantidad','Vendedor','Llegó a PT','Entrega programada','Despachada','Entregada','Recibió','Chofer','Vehículo','Estado','Reprogramaciones','Ítems','Notas'];
- const r=DB.ordenes.map(o=>[o.ot,o.nota,o.cliente,o.producto,o.cant,o.vendedor,o.fechaPT,o.fechaEntrega,o.fechaDespacho||'',o.fechaEntregado||'',o.entrega?.recibe||'',o.viaje?.chofer||'',o.viaje?.vehiculo||'',etq(o),o.reprog||0,(o.items||[]).map(i=>i.cant+' '+i.desc+(i.d?' ✓':'')).join(' | '),(o.notas||[]).map(n=>n.a+': '+n.txt).join(' | ')]);
+function csv(){const h=['OT','Nota entrega','Cliente','Producto','Cantidad','Vendedor','Llegó a PT','Entrega programada','Despachada','Entregada','Recibió','Chofer','Vehículo','Tipo','Compromiso','Inicio fabricación','Estado','Reprogramaciones','Ítems','Notas'];
+ const r=DB.ordenes.map(o=>[o.ot,o.nota,o.cliente,o.producto,o.cant,o.vendedor,o.fechaPT,o.fechaEntrega,o.fechaDespacho||'',o.fechaEntregado||'',o.entrega?.recibe||'',o.viaje?.chofer||'',o.viaje?.vehiculo||'',o.tipo||'',o.fechaCompromiso||'',o.tInicio?o.tInicio.slice(0,10):'',etq(o),o.reprog||0,(o.items||[]).map(i=>i.cant+' '+i.desc+(i.d?' ✓':'')).join(' | '),(o.notas||[]).map(n=>n.a+': '+n.txt).join(' | ')]);
  return[h,...r].map(x=>x.map(v=>String(v??'').replace(/\t|\n/g,' ')).join('\t')).join('\n')}
 function restaurar(){openSheet(`<h3>Restaurar respaldo</h3><div class="mut sm">Pega aquí el texto del respaldo. Reemplazará los datos actuales.</div><textarea id="rT" rows="8"></textarea><button class="btn" onclick="confRest()">Restaurar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`)}
 function confRest(){try{const d=JSON.parse($('#rT').value);if(!Array.isArray(d.ordenes)||!d.cfg)throw 0;preguntar('¿Reemplazar todos los datos actuales por el respaldo?',()=>{DB=d;save();closeSheet();render();toast('Respaldo restaurado')},'♻️ Sí, reemplazar',1)}catch(e){toast('Texto de respaldo no válido')}}

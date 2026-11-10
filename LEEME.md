@@ -1,5 +1,13 @@
 # Entregas PT
 
+## Novedades v2.3 — planificación de producción
+- Pestaña **🏭 Producción**: OT en fabricación (avance por etapas, fin estimado, riesgo) y **aprobadas en cola** ordenadas por fecha límite para iniciar.
+- Tipos de tablero con **días de fabricación** (NLAB 3, NAB 8, Celda 15, editables) y **días hábiles** del galpón.
+- La app calcula **"iniciar a más tardar"** = fecha compromiso − días de fabricación, y avisa en **Hoy** lo que debe iniciar.
+- Al terminar todas las etapas de una OT, ofrece pasarla a PT y **sugiere la siguiente** de la cola.
+- Trello: lista **"aprobadas"** como cola; la fecha de vencimiento de la tarjeta se toma como compromiso. Si la tarjeta pasa a "en proceso", la OT inicia sola en la app.
+- **Tiempos reales vs estimados** por tipo, con botón para ajustar la estimación.
+
 ## Novedades v2.2 — viajes, QR y avisos
 - **🚛 Armar viaje**: varias OT verificadas salen juntas con chofer y vehículo; se registra salida y regreso al galpón.
 - **🏷 Etiqueta QR** por OT para pegar en el tablero y **📷 Escanear QR** para abrir la OT al instante.

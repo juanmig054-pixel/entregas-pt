@@ -7,9 +7,9 @@
 <title>Entregas PT</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--line:#e5e7eb;--pri:#0f766e;--pri2:#ccfbf1;
---pt:#2563eb;--pt2:#dbeafe;--ag:#b45309;--ag2:#fef3c7;--ok:#15803d;--ok2:#dcfce7;--bad:#dc2626;--bad2:#fee2e2}
+--pt:#2563eb;--pt2:#dbeafe;--ag:#b45309;--ag2:#fef3c7;--ok:#15803d;--ok2:#dcfce7;--bad:#dc2626;--bad2:#fee2e2;--fab:#7c3aed;--fab2:#ede9fe}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#1a1d23;--tx:#e8eaed;--mut:#9aa1ab;--line:#2a2f37;--pri:#2dd4bf;--pri2:#134e4a;
---pt:#60a5fa;--pt2:#1e3a5f;--ag:#fbbf24;--ag2:#4a3410;--ok:#4ade80;--ok2:#14391f;--bad:#f87171;--bad2:#4c1d1d}}
+--pt:#60a5fa;--pt2:#1e3a5f;--ag:#fbbf24;--ag2:#4a3410;--ok:#4ade80;--ok2:#14391f;--bad:#f87171;--bad2:#4c1d1d;--fab:#c4b5fd;--fab2:#2e1f55}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px}
 header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px}
@@ -81,12 +81,21 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;b
 .chk.on{border-color:var(--ok);background:var(--ok2)}.chk.done{opacity:.6}
 .chk b{flex:none;min-width:34px;text-align:right}.chk div{flex:1}.chk small{display:block;color:var(--ok);font-weight:600}
 .bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0 10px}.bar i{display:block;height:100%;background:var(--ok);transition:.3s}
+.pill.fab{background:var(--fab2);color:var(--fab)}.card.st-fab{border-left-color:var(--fab)}
+#nube{display:inline-block;margin-left:8px;font-size:12px;opacity:.95}
+#login{position:fixed;inset:0;z-index:30;background:var(--bg);overflow-y:auto;display:none;padding:calc(30px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-left,0px)) 30px max(16px,env(safe-area-inset-right,0px))}
+#login.on{display:block}#login .in{max-width:420px;margin:auto}
+#login h2{margin:0 0 4px;color:var(--pri)}.ubtn{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--tx);font-size:16px;margin-bottom:8px;text-align:left}
+.ubtn.on{border-color:var(--pri)}.ubtn small{color:var(--mut)}
+.pin{letter-spacing:10px;font-size:24px;text-align:center}
+.trc{display:flex;gap:10px;align-items:center}.trc div{flex:1;min-width:0}.trc .chip{flex:none}
 .pdfpg{width:100%;border-radius:6px;margin-bottom:8px;background:#fff}
 .load{text-align:center;color:var(--mut);padding:10px;font-size:14px}
 </style>
 </head>
 <body>
-<header><h1>📦 Entregas PT</h1><small id="hoyTxt"></small></header>
+<header><h1>📦 Entregas PT</h1><small id="hoyTxt"></small><small id="nube"></small></header>
+<div id="login"><div class="in" id="loginIn"></div></div>
 <main id="main"></main>
 <button id="fab" onclick="abrirForm()" aria-label="Nueva orden">+</button>
 <nav class="nav">
@@ -96,16 +105,20 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;b
 </nav>
 <div id="sheet" onclick="if(event.target===this)closeSheet()"><div id="sheetBody"></div></div>
 <div id="toast"></div>
+<script src="lib/firebase-app-compat.js"></script>
+<script src="lib/firebase-auth-compat.js"></script>
+<script src="lib/firebase-firestore-compat.js"></script>
 <script>
 /* ========= DATOS ========= */
 const KEY='entregasPT_v1';
-const LBL={pt:'En PT · sin fecha',ag:'Agendada',venc:'Vencida',desp:'Despachada'};
+const LBL={fab:'En fabricación',pt:'En PT · sin fecha',ag:'Agendada',venc:'Vencida',desp:'Despachada'};
 const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 let DB=load();
 function defaults(){return{ordenes:[],cfg:{vendedores:['Vendedor 1','Vendedor 2','Vendedor 3'],dias:[1,2,3,4,5],cupo:4}}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.ordenes)&&d.cfg)return d}catch(e){}return defaults()}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){toast('⚠ No se pudo guardar')}}
+function guardarLocal(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}}
+function save(){guardarLocal();pushCambios()}
 let S={tab:'inicio',filtro:'activas',vend:'',q:'',mes:null,dia:null};
 let sheetOpen=false;
 
@@ -121,7 +134,7 @@ const fmt=s=>{if(!s)return'—';const d=parse(s);return DIAS[d.getDay()]+' '+d.g
 const ahora=()=>new Date().toISOString();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1800)}
-function est(o){if(o.despachada)return'desp';if(!o.fechaEntrega)return'pt';return o.fechaEntrega<hoy()?'venc':'ag'}
+function est(o){if(o.despachada)return'desp';if(o.enFab)return'fab';if(!o.fechaEntrega)return'pt';return o.fechaEntrega<hoy()?'venc':'ag'}
 const byId=id=>DB.ordenes.find(o=>o.id===id);
 
 /* ========= ADJUNTOS (se guardan en el teléfono, IndexedDB) ========= */
@@ -189,18 +202,191 @@ function hintFecha(s,excluir){if(!s)return'';const n=carga(s,excluir),c=DB.cfg.c
 
 /* ========= NAVEGACIÓN Y HOJAS ========= */
 function ir(t){S.tab=t;render();scrollTo(0,0)}
-function openSheet(h){$('#sheetBody').innerHTML=h;$('#sheet').classList.add('on');$('#sheetBody').scrollTop=0;if(!sheetOpen){sheetOpen=true;try{history.pushState({s:1},'')}catch(e){}}}
+function openSheet(h){S.vista='otro';$('#sheetBody').innerHTML=h;$('#sheet').classList.add('on');$('#sheetBody').scrollTop=0;if(!sheetOpen){sheetOpen=true;try{history.pushState({s:1},'')}catch(e){}}}
 function preguntar(msg,ok,txt,peligro,volver){openSheet(`<h3>${msg}</h3><button class="btn ${peligro?'bad':''}" id="qOk">${txt||'Sí, continuar'}</button><button class="btn sec" id="qNo">Cancelar</button>`);$('#qOk').onclick=ok;$('#qNo').onclick=volver||closeSheet}
 let ignorarPop=0;
 function closeSheet(){if(!sheetOpen)return;sheetOpen=false;$('#sheet').classList.remove('on');try{ignorarPop++;history.back()}catch(e){ignorarPop=0}}
 window.addEventListener('popstate',()=>{if(ignorarPop){ignorarPop--;return}if(sheetOpen){sheetOpen=false;$('#sheet').classList.remove('on')}});
-function render(){
+function render(){if(!USR)return;
  $('#hoyTxt').textContent='Hoy: '+fmt(hoy());
  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
- $('#fab').style.display=S.tab==='ajustes'?'none':'flex';
+ $('#fab').style.display=S.tab==='ajustes'||!puede('crear')?'none':'flex';
  $('#main').innerHTML=S.tab==='inicio'?vInicio():S.tab==='cal'?vCal():vAjustes();
  if(S.tab==='inicio')pintarLista();
 }
+
+/* ========= USUARIOS Y PERMISOS ========= */
+let USR=null;
+const ROLES={sup:'Supervisor',desp:'Despacho',vend:'Vendedor'};
+const PERM={sup:['crear','agendar','despachar','ajustes','trello'],desp:['despachar'],vend:[]};
+const puede=a=>!!USR&&(PERM[USR.rol]||[]).includes(a);
+const quien=()=>USR?USR.nombre:'Sistema';
+const SES='entregasPT_sesion';
+function leerSesion(){try{return JSON.parse(localStorage.getItem(SES))}catch(e){return null}}
+function guardarSesion(u){try{u?localStorage.setItem(SES,JSON.stringify(u)):localStorage.removeItem(SES)}catch(e){}}
+async function hashPin(uid_,pin){const s=uid_+':'+pin+':entregasPT';
+ if(crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+ let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return'x'+h}
+let LOGIN={sel:null};
+function mostrarLogin(){$('#login').classList.add('on');pintarLogin()}
+function pintarLogin(){const el=$('#loginIn');if(!el||!$('#login').classList.contains('on'))return;const us=NUBE.usuarios;
+ if(!NUBE.usrListo){el.innerHTML='<h2>📦 Entregas PT</h2><div class="load">⏳ Conectando con la nube…</div>';return}
+ if(!us.length){el.innerHTML=`<h2>📦 Entregas PT</h2><p class="mut">Primera vez: crea el usuario <b>Supervisor</b>. Después podrás agregar a despacho y vendedores desde Ajustes.</p>
+  <label for="lN">Tu nombre</label><input id="lN" placeholder="Ej: Juan Miguel"><label for="lP">PIN de 4 a 6 números</label><input id="lP" class="pin" type="password" inputmode="numeric" maxlength="6">
+  <label for="lP2">Repite el PIN</label><input id="lP2" class="pin" type="password" inputmode="numeric" maxlength="6"><button class="btn" onclick="crearPrimerSup()">Crear supervisor y entrar</button>`;return}
+ el.innerHTML=`<h2>📦 Entregas PT</h2><p class="mut">¿Quién eres?</p>${us.map(u=>`<button class="ubtn ${LOGIN.sel===u.id?'on':''}" onclick="LOGIN.sel='${u.id}';pintarLogin();setTimeout(()=>$('#lP')?.focus(),30)"><b>${esc(u.nombre)}</b><small>${ROLES[u.rol]||u.rol}</small></button>`).join('')}
+ ${LOGIN.sel?`<label for="lP">PIN</label><input id="lP" class="pin" type="password" inputmode="numeric" maxlength="6" onkeyup="if(event.key==='Enter')entrar()"><button class="btn" onclick="entrar()">Entrar</button>`:''}`}
+async function crearPrimerSup(){const n=$('#lN').value.trim(),p=$('#lP').value.trim();
+ if(!n)return toast('Escribe tu nombre');if(!/^\d{4,6}$/.test(p))return toast('El PIN debe tener de 4 a 6 números');if(p!==$('#lP2').value.trim())return toast('Los PIN no coinciden');
+ const id=uid();const u={nombre:n,rol:'sup',pin:await hashPin(id,p),creado:ahora()};
+ try{NUBE.fs.collection('usuarios').doc(id).set(u)}catch(e){return toast('No se pudo crear: '+e.message)}
+ iniciarSesion({id,nombre:n,rol:'sup'})}
+async function entrar(){const u=NUBE.usuarios.find(x=>x.id===LOGIN.sel);const p=$('#lP').value.trim();if(!u)return;
+ if(await hashPin(u.id,p)!==u.pin){$('#lP').value='';return toast('PIN incorrecto')}
+ iniciarSesion({id:u.id,nombre:u.nombre,rol:u.rol})}
+function iniciarSesion(u){USR=u;guardarSesion(u);$('#login').classList.remove('on');LOGIN.sel=null;S.tab='inicio';
+ if(NUBE.pendMigrar&&puede('crear'))ofrecerMigrar();render();toast('Hola, '+u.nombre)}
+function cerrarSesion(){preguntar('¿Cerrar sesión en este teléfono?',()=>{closeSheet();USR=null;guardarSesion(null);mostrarLogin()},'Cerrar sesión')}
+function vUsuarios(){return`<div class="box"><h3 style="margin-top:0">👥 Usuarios de la app</h3><div class="mut sm">Cada persona entra con su nombre y PIN. Los vendedores solo ven sus notas; despacho tilda y despacha.</div>
+ ${NUBE.usuarios.map(u=>`<div class="kv"><span>${esc(u.nombre)}${u.id===USR.id?' (tú)':''}<br><small>${ROLES[u.rol]}</small></span><b><button class="chip" onclick="editUsr('${u.id}')">Editar</button></b></div>`).join('')}
+ <button class="btn sec" onclick="editUsr()">➕ Agregar usuario</button></div>`}
+function editUsr(id){const u=id?NUBE.usuarios.find(x=>x.id===id):{nombre:'',rol:'desp'};
+ openSheet(`<h3>${id?'Editar usuario':'Nuevo usuario'}</h3><label for="uN">Nombre ${'<span class="mut">(vendedores: como sale en las notas)</span>'}</label><input id="uN" value="${esc(u.nombre)}">
+ <label>Rol</label><div class="radio" id="uR">${Object.entries(ROLES).map(([k,v])=>`<button type="button" class="chip ${u.rol===k?'on':''}" data-r="${k}" onclick="selV(this)">${v}</button>`).join('')}</div>
+ <label for="uP">${id?'Nuevo PIN (déjalo vacío para no cambiarlo)':'PIN de 4 a 6 números'}</label><input id="uP" class="pin" type="password" inputmode="numeric" maxlength="6">
+ <button class="btn" onclick="guardarUsr('${id||''}')">💾 Guardar</button>${id&&id!==USR.id?`<button class="btn bad" onclick="borrarUsr('${id}')">Quitar usuario</button>`:''}<button class="btn sec" onclick="closeSheet()">Cancelar</button>`)}
+async function guardarUsr(id){const n=$('#uN').value.trim(),r=$('#uR .chip.on')?.dataset.r,p=$('#uP').value.trim();
+ if(!n||!r)return toast('Completa nombre y rol');if((!id||p)&&!/^\d{4,6}$/.test(p))return toast('El PIN debe tener de 4 a 6 números');
+ if(id===USR.id&&r!=='sup'&&!NUBE.usuarios.some(u=>u.id!==id&&u.rol==='sup'))return toast('Debe quedar al menos un supervisor');
+ const nid=id||uid(),d={nombre:n,rol:r};if(p)d.pin=await hashPin(nid,p);if(!id)d.creado=ahora();
+ NUBE.fs.collection('usuarios').doc(nid).set(d,{merge:true}).catch(e=>toast('⚠ '+e.message));
+ if(r==='vend'&&!DB.cfg.vendedores.some(v=>v.toLowerCase()===n.toLowerCase())){DB.cfg.vendedores.push(n);save()}
+ if(id===USR.id){USR.nombre=n;USR.rol=r;guardarSesion(USR)}closeSheet();toast('Usuario guardado');render()}
+function borrarUsr(id){preguntar('¿Quitar este usuario? Ya no podrá entrar.',()=>{NUBE.fs.collection('usuarios').doc(id).delete();closeSheet();toast('Usuario quitado')},'Quitar',1)}
+
+/* ========= NUBE (Firebase) ========= */
+const FB_CFG={apiKey:"AIzaSyDrWl_eIA7WsQHpMN4pVfHYsyVz1x7DC1c",authDomain:"entregas-pt.firebaseapp.com",projectId:"entregas-pt",storageBucket:"entregas-pt.firebasestorage.app",messagingSenderId:"1059803438612",appId:"1:1059803438612:web:63a7bab091a8d37a0c9101"};
+const NUBE={on:false,fs:null,last:{},cfgLast:'',usuarios:[],usrListo:false,base:false,pendMigrar:null};
+function sj(v){if(Array.isArray(v))return'['+v.map(sj).join(',')+']';if(v&&typeof v==='object')return'{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+sj(v[k])).join(',')+'}';return JSON.stringify(v===undefined?null:v)}
+const limpio=o=>{const r={};Object.keys(o).forEach(k=>{if(k[0]!=='_'&&o[k]!==undefined)r[k]=o[k]});return JSON.parse(JSON.stringify(r))};
+function pushCambios(){if(!NUBE.on||!NUBE.base)return;const fs=NUBE.fs,FV=firebase.firestore.FieldValue,col=fs.collection('ordenes');let b=fs.batch(),n=0;const ops=[];
+ const ids=new Set();
+ DB.ordenes.forEach(o=>{ids.add(o.id);const prev=NUBE.last[o.id],cur=limpio(o);
+  if(!prev)ops.push(()=>b.set(col.doc(o.id),{...cur,_upd:FV.serverTimestamp(),_por:quien()}));
+  else{const up={};new Set([...Object.keys(prev),...Object.keys(cur)]).forEach(k=>{if(sj(prev[k])!==sj(cur[k]))up[k]=k in cur?cur[k]:FV.delete()});
+   if(Object.keys(up).length){up._upd=FV.serverTimestamp();up._por=quien();ops.push(()=>b.set(col.doc(o.id),up,{merge:true}))}}
+  NUBE.last[o.id]=cur});
+ Object.keys(NUBE.last).forEach(id=>{if(!ids.has(id)){delete NUBE.last[id];ops.push(()=>b.delete(col.doc(id)))}});
+ const c=sj(DB.cfg);if(c!==NUBE.cfgLast&&puede('ajustes')){NUBE.cfgLast=c;ops.push(()=>b.set(fs.doc('config/general'),limpio(DB.cfg)))}
+ const commit=()=>b.commit().catch(e=>{console.error(e);toast('⚠ No se pudo sincronizar ('+(e.code||e.message)+')')});
+ ops.forEach(f=>{f();if(++n>=400){commit();b=fs.batch();n=0}});if(n)commit()}
+function estadoNube(meta){const el=$('#nube');if(!el)return;
+ el.textContent=!NUBE.on?'· 📱 Solo este teléfono':meta&&meta.hasPendingWrites?'· 🟡 Enviando…':(!navigator.onLine||(meta&&meta.fromCache))?'· 🔴 Sin conexión':'· 🟢 En línea'}
+function refrescar(cambiados){if(!USR)return;const a=document.activeElement;
+ if(S.tab==='inicio'&&a&&a.classList&&a.classList.contains('search'))pintarLista();else render();
+ if(sheetOpen&&S.vista==='ver'&&cambiados.has(S.verId)&&byId(S.verId)&&!(a&&/INPUT|TEXTAREA/.test(a.tagName))){const y=$('#sheetBody').scrollTop;ver(S.verId);$('#sheetBody').scrollTop=y}}
+async function iniciarNube(){if(!window.firebase||!firebase.initializeApp){estadoNube();return false}
+ try{firebase.initializeApp(FB_CFG);const fs=firebase.firestore();fs.settings({ignoreUndefinedProperties:true,merge:true});
+  try{await fs.enablePersistence({synchronizeTabs:true})}catch(e){}
+  const auth=firebase.auth();await new Promise(ok=>{const u=auth.onAuthStateChanged(()=>{u();ok()})});
+  if(!auth.currentUser)await auth.signInAnonymously();
+  NUBE.fs=fs;NUBE.on=true;escuchar();return true}
+ catch(e){console.error(e);toast('⚠ No se pudo conectar a la nube. Trabajando solo en este teléfono.');NUBE.on=false;estadoNube();return false}}
+function escuchar(){const fs=NUBE.fs;
+ fs.collection('usuarios').onSnapshot(s=>{NUBE.usuarios=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.nombre.localeCompare(b.nombre));if(!s.metadata.fromCache||s.size)NUBE.usrListo=true;
+  if(USR){const u=NUBE.usuarios.find(x=>x.id===USR.id);if(NUBE.usrListo&&!s.metadata.fromCache&&!u){USR=null;guardarSesion(null);mostrarLogin();return}if(u&&(u.rol!==USR.rol||u.nombre!==USR.nombre)){USR={id:u.id,nombre:u.nombre,rol:u.rol};guardarSesion(USR);render()}}
+  pintarLogin();if(S.tab==='ajustes'&&USR)render()},e=>{console.error(e);toast('⚠ Sin permiso en la nube: revisa las reglas de Firestore')});
+ fs.doc('config/general').onSnapshot(d=>{if(d.exists){DB.cfg=Object.assign(defaults().cfg,d.data());NUBE.cfgLast=sj(DB.cfg);guardarLocal();if(USR)render()}});
+ fs.collection('ordenes').onSnapshot({includeMetadataChanges:true},s=>{const cam=new Set();
+  if(!NUBE.base){if(s.metadata.fromCache&&!s.size)return estadoNube(s.metadata);
+   const local=DB.ordenes;DB.ordenes=s.docs.map(d=>({...limpio(d.data()),id:d.id}));NUBE.last={};DB.ordenes.forEach(o=>NUBE.last[o.id]=limpio(o));NUBE.base=true;
+   if(!s.size&&local.length){NUBE.pendMigrar=local;if(USR&&puede('crear'))ofrecerMigrar()}
+   guardarLocal();estadoNube(s.metadata);if(USR)render();return}
+  s.docChanges().forEach(ch=>{const id=ch.doc.id;cam.add(id);
+   if(ch.type==='removed'){DB.ordenes=DB.ordenes.filter(o=>o.id!==id);delete NUBE.last[id];return}
+   const d={...limpio(ch.doc.data()),id};NUBE.last[id]=limpio(d);const i=DB.ordenes.findIndex(o=>o.id===id);if(i<0)DB.ordenes.push(d);else DB.ordenes[i]=d});
+  estadoNube(s.metadata);if(cam.size){guardarLocal();refrescar(cam)}},e=>{console.error(e);estadoNube();toast('⚠ Sin permiso en la nube: revisa las reglas de Firestore')});
+ addEventListener('online',()=>estadoNube());addEventListener('offline',()=>estadoNube())}
+function ofrecerMigrar(){const L=NUBE.pendMigrar;if(!L||!L.length)return;
+ openSheet(`<h3>☁️ Subir datos de este teléfono</h3><p class="mut">La nube está vacía y este teléfono tiene <b>${L.length} orden(es)</b> de la versión anterior. ¿Las subo para que todos las vean?</p>
+ <button class="btn" onclick="migrar()">Sí, subirlas</button><button class="btn sec" onclick="NUBE.pendMigrar=null;closeSheet()">No, empezar desde cero</button>`)}
+async function migrar(){const L=NUBE.pendMigrar;NUBE.pendMigrar=null;DB.ordenes=L;save();closeSheet();render();toast('Subiendo '+L.length+' orden(es)…');
+ for(const o of L){if(o.adj){try{const r=await IDB.get(o.adj.id);if(r)subirAdj(o.adj.id,r,r.blob)}catch(e){}}}}
+/* PDFs en la nube: se guardan en partes dentro de Firestore */
+const blobB64=b=>new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=ko;r.readAsDataURL(b)});
+function b64Blob(s,type){const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type})}
+async function subirAdj(aid,meta,blob){if(!NUBE.on||!blob)return;try{const s=await blobB64(blob),CH=700000,n=Math.ceil(s.length/CH)||1,fs=NUBE.fs;
+ for(let i=0;i<n;i++)fs.doc(`adjuntos/${aid}/partes/${i}`).set({d:s.slice(i*CH,(i+1)*CH)}).catch(e=>console.error(e));
+ fs.doc('adjuntos/'+aid).set({name:meta.name||'nota',type:meta.type||'application/pdf',n,size:blob.size,por:quien()}).catch(e=>console.error(e))}catch(e){console.error(e)}}
+async function bajarAdj(aid){try{const fs=NUBE.fs,m=await fs.doc('adjuntos/'+aid).get();if(!m.exists)return null;const{n,type,name}=m.data();let s='';
+ for(let i=0;i<n;i++){const p=await fs.doc(`adjuntos/${aid}/partes/${i}`).get();if(!p.exists)return null;s+=p.data().d}
+ const r={name,type,blob:b64Blob(s,type)};IDB.put(aid,r).catch(()=>{});return r}catch(e){console.error(e);return null}}
+function borrarAdjNube(aid){if(!NUBE.on)return;const fs=NUBE.fs;fs.doc('adjuntos/'+aid).get().then(m=>{const n=m.exists?m.data().n:0;for(let i=0;i<n;i++)fs.doc(`adjuntos/${aid}/partes/${i}`).delete();fs.doc('adjuntos/'+aid).delete()}).catch(()=>{})}
+
+/* ========= TRELLO ========= */
+const TRK='entregasPT_trello';
+let TR=(()=>{try{return JSON.parse(localStorage.getItem(TRK))||{}}catch(e){return{}}})();TR.ok=!!(TR.key&&TR.token&&TR.board);
+function guardarTR(){TR.ok=!!(TR.key&&TR.token&&TR.board);try{localStorage.setItem(TRK,JSON.stringify(TR))}catch(e){}}
+async function trello(path,params){const q=new URLSearchParams({key:TR.key,token:TR.token,...(params||{})});const r=await fetch('https://api.trello.com/1/'+path+'?'+q);
+ if(r.status===401)throw new Error('La clave o el token de Trello no son válidos');if(!r.ok)throw new Error('Trello respondió '+r.status);return r.json()}
+async function bajarTrello(url,type){const auth=`OAuth oauth_consumer_key="${TR.key}", oauth_token="${TR.token}"`;const CH=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp;
+ if(CH){const r=await CH.get({url,headers:{Authorization:auth},responseType:'blob'});if(r.status>=300)throw new Error('No se pudo bajar el adjunto ('+r.status+')');return b64Blob(r.data,type)}
+ const r=await fetch(url,{headers:{Authorization:auth}});if(!r.ok)throw new Error('No se pudo bajar el adjunto ('+r.status+')');return r.blob()}
+function vTrello(){return`<div class="box"><h3 style="margin-top:0">🔗 Trello</h3>
+ ${TR.ok?`<div class="kv"><span>Tablero</span><b>${esc(TR.boardName||'')}</b></div><div class="kv"><span>En fabricación</span><b>${esc(TR.fabName||'—')}</b></div><div class="kv"><span>Producto terminado</span><b>${esc(TR.ptName||'—')}</b></div>`:'<div class="mut sm">Conecta tu tablero para traer las tarjetas con su nota de entrega.</div>'}
+ <button class="btn sec" onclick="configTrello()">${TR.ok?'Cambiar configuración':'Conectar Trello'}</button></div>`}
+function configTrello(){openSheet(`<h3>🔗 Conectar Trello</h3>
+ <div class="box sm"><b>Cómo sacar la clave y el token (una sola vez):</b><br>1. Entra en Chrome a <span style="user-select:all">trello.com/power-ups/admin</span><br>2. Toca <b>Nuevo</b>, ponle de nombre "Entregas PT", elige tu espacio de trabajo y guarda.<br>3. Entra a la pestaña <b>Clave API</b> → <b>Generar una nueva clave API</b>. Copia la clave.<br>4. Al lado de la clave toca el enlace <b>Token</b> → <b>Permitir</b>. Copia el token.</div>
+ <label for="tK">Clave API</label><input id="tK" value="${esc(TR.key||'')}" autocomplete="off"><label for="tT">Token</label><input id="tT" type="password" value="${esc(TR.token||'')}" autocomplete="off">
+ <div class="mut sm" style="margin-top:6px">Se guardan solo en este teléfono.</div>
+ <button class="btn" onclick="probarTrello()">Conectar y elegir tablero</button><div id="tSel"></div><button class="btn sec" onclick="closeSheet()">Cerrar</button>`)}
+async function probarTrello(){TR.key=$('#tK').value.trim();TR.token=$('#tT').value.trim();if(!TR.key||!TR.token)return toast('Pega la clave y el token');
+ $('#tSel').innerHTML='<div class="load">⏳ Conectando…</div>';
+ try{const bs=await trello('members/me/boards',{fields:'name',filter:'open'});
+  $('#tSel').innerHTML=`<label>Tablero</label>${bs.map(b=>`<button class="ubtn" onclick="elegirTablero('${b.id}',this)"><b>${esc(b.name)}</b></button>`).join('')||'<div class="mut">No hay tableros.</div>'}`;
+  const pre=bs.find(b=>/planificaci/i.test(b.name));if(pre&&bs.length>1)toast('Elige el tablero: suele ser '+pre.name)}
+ catch(e){$('#tSel').innerHTML=`<div class="hint w">⚠ ${esc(e.message)}</div>`}}
+async function elegirTablero(id,btn){const name=btn.querySelector('b').textContent;$('#tSel').innerHTML='<div class="load">⏳ Leyendo listas…</div>';
+ try{const ls=await trello('boards/'+id+'/lists',{fields:'name',filter:'open'});
+  const fab=ls.find(l=>/^en proceso$/i.test(l.name.trim()))||ls.find(l=>/proceso/i.test(l.name)),pt=ls.find(l=>/terminad/i.test(l.name));
+  const op=(sel)=>`<option value="">— Ninguna —</option>`+ls.map(l=>`<option value="${l.id}" ${sel&&sel.id===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
+  $('#tSel').innerHTML=`<div class="box" style="margin-top:12px"><b>${esc(name)}</b><label for="tF">Lista "en fabricación"</label><select id="tF">${op(fab)}</select>
+  <label for="tP">Lista "producto terminado"</label><select id="tP">${op(pt)}</select><button class="btn" onclick="guardarTrello('${id}',${esc(JSON.stringify(name))})">💾 Guardar</button></div>`}
+ catch(e){$('#tSel').innerHTML=`<div class="hint w">⚠ ${esc(e.message)}</div>`}}
+function guardarTrello(board,boardName){const f=$('#tF'),p=$('#tP');if(!f.value&&!p.value)return toast('Elige al menos una lista');
+ Object.assign(TR,{board,boardName,fab:f.value,fabName:f.value?f.selectedOptions[0].text:'',pt:p.value,ptName:p.value?p.selectedOptions[0].text:''});guardarTR();closeSheet();render();toast('Trello conectado')}
+async function trelloImportar(){openSheet('<h3>⬇ Tarjetas de Trello</h3><div class="load">⏳ Leyendo tarjetas…</div>');
+ try{const prm={fields:'name,desc,shortUrl,idList',attachments:'true',attachment_fields:'id,name,mimeType,url,isUpload,fileName,bytes'};
+  const [fab,pt]=await Promise.all([TR.fab?trello('lists/'+TR.fab+'/cards',prm):[],TR.pt?trello('lists/'+TR.pt+'/cards',prm):[]]);
+  let movidas=0;pt.forEach(c=>{const o=DB.ordenes.find(x=>x.trelloId===c.id);if(o&&o.enFab&&!o.despachada){o.enFab=false;o.fechaPT=hoy();o.trelloList='pt';o.notas.push({t:ahora(),a:quien(),txt:'Llegó a producto terminado (movida en Trello)'});movidas++}});
+  if(movidas){save();render()}
+  TRIMP={};[...fab.map(c=>({...c,_l:'fab'})),...pt.map(c=>({...c,_l:'pt'}))].forEach(c=>TRIMP[c.id]=c);
+  const fila=c=>{const o=DB.ordenes.find(x=>x.trelloId===c.id),pdf=(c.attachments||[]).some(esPdf);
+   return`<div class="card ${o?'st-desp':''}" style="padding:10px"><div class="trc"><div><b>${esc(c.name)}</b><div class="sm mut">${pdf?'📄 Con nota PDF':'Sin PDF'}${o?' · ✓ Ya está como OT '+esc(o.ot):''}</div></div>
+   ${o?`<button class="chip" onclick="ver('${o.id}')">Ver</button>`:`<button class="chip on" onclick="importarTarjeta('${c.id}')">Importar</button>`}</div></div>`};
+  openSheet(`<h3>⬇ Tarjetas de Trello</h3>${movidas?`<div class="hint g">📦 ${movidas} orden(es) pasaron a producto terminado porque se movieron en Trello.</div>`:''}
+  ${TR.fab?`<h3 style="margin-top:14px">🔧 ${esc(TR.fabName)} <span class="mut sm">(${fab.length})</span></h3>${fab.map(fila).join('')||'<div class="mut sm">Sin tarjetas.</div>'}`:''}
+  ${TR.pt?`<h3 style="margin-top:14px">📦 ${esc(TR.ptName)} <span class="mut sm">(${pt.length})</span></h3>${pt.map(fila).join('')||'<div class="mut sm">Sin tarjetas.</div>'}`:''}
+  <button class="btn sec" onclick="closeSheet()">Cerrar</button>`)}
+ catch(e){openSheet(`<h3>⬇ Tarjetas de Trello</h3><div class="hint w">⚠ ${esc(e.message)}</div><button class="btn sec" onclick="configTrello()">Revisar configuración</button><button class="btn sec" onclick="closeSheet()">Cerrar</button>`)}}
+let TRIMP={};
+const esPdf=a=>a.isUpload!==false&&(/pdf/i.test(a.mimeType||'')||/\.pdf$/i.test(a.fileName||a.name||''));
+async function importarTarjeta(cid){const c=TRIMP[cid];if(!c)return;const pre={trelloId:c.id,trelloUrl:c.shortUrl,trelloList:c._l,enFab:c._l==='fab',producto:'',items:[]};
+ const m=c.name.match(/\bOT\s*[-#:N°º.]*\s*(\d+)/i);if(m)pre.ot=m[1];
+ const a=(c.attachments||[]).find(esPdf);
+ if(!a){pre.producto=c.name;abrirForm(null,'',pre);return toast('La tarjeta no tiene PDF: completa los ítems a mano')}
+ openSheet(`<h3>${esc(c.name)}</h3><div class="load">⏳ Bajando y leyendo la nota…</div>`);
+ try{const blob=await bajarTrello(a.url,'application/pdf'),lines=await leerPDF(await blob.arrayBuffer()),it=extraerItems(lines),d=extraerDatos(lines);
+  Object.assign(pre,{nota:d.nota,cliente:d.cliente,vendedor:vendedorDe(d.vendedor)||'',items:it.map(i=>({id:uid(),...i})),adj:{id:uid(),name:a.fileName||a.name||'nota.pdf',type:'application/pdf',file:blob}});
+  if(!pre.ot&&d.nota)pre.ot='';abrirForm(null,'',pre);if(d.vendedor&&!pre.vendedor){FORM.vendNota=d.vendedor;$('#fVend').insertAdjacentHTML('beforeend',`<button type="button" class="chip" onclick="nuevoVend(this)">➕ ${esc(d.vendedor)} (de la nota)</button>`)}
+  toast(it.length?`Encontré ${it.length} ítem(s). Escribe el N° de OT y revisa.`:'No encontré ítems en el PDF')}
+ catch(e){console.error(e);pre.producto=c.name;abrirForm(null,'',pre);toast('⚠ '+e.message+'. Completa a mano.')}}
+
+/* ========= ARRANQUE ========= */
+async function arranque(){render0();const ok=await iniciarNube();const s=leerSesion();
+ if(!ok){USR=s||{id:'local',nombre:'Supervisor',rol:'sup'};render();return}
+ estadoNube();if(s){USR=s;render();if(NUBE.pendMigrar&&puede('crear'))ofrecerMigrar()}else mostrarLogin()}
+function render0(){$('#hoyTxt').textContent='Hoy: '+fmt(hoy())}
 
 /* ========= INICIO ========= */
 function vInicio(){
@@ -208,9 +394,10 @@ function vInicio(){
  const n=e=>act.filter(o=>est(o)===e).length;
  const k=(f,v,l,red)=>`<div class="kpi ${S.filtro===f?'on':''} ${red&&v?'red':''}" onclick="setF('${f}')"><b>${v}</b><span>${l}</span></div>`;
  const ch=(f,l)=>`<button class="chip ${S.filtro===f?'on':''}" onclick="setF('${f}')">${l}</button>`;
- return`<div class="kpis">${k('pt',n('pt'),'Sin fecha')}${k('ag',n('ag'),'Agendadas')}${k('venc',n('venc'),'Vencidas',1)}${k('hoy',act.filter(o=>o.fechaEntrega===t).length,'Para hoy')}</div>
+ const tb=puede('crear')&&TR.ok?`<button class="btn sec" style="margin:0 0 12px" onclick="trelloImportar()">⬇ Traer tarjetas de Trello</button>`:'';
+ return tb+`<div class="kpis">${k('pt',n('pt'),'Sin fecha')}${k('ag',n('ag'),'Agendadas')}${k('venc',n('venc'),'Vencidas',1)}${k('hoy',act.filter(o=>o.fechaEntrega===t).length,'Para hoy')}</div>
  <input class="search" placeholder="🔍 Buscar OT, nota, cliente, producto" value="${esc(S.q)}" oninput="S.q=this.value;pintarLista()">
- <div class="chips">${ch('activas','Activas')}${ch('pt','Sin fecha')}${ch('ag','Agendadas')}${ch('venc','Vencidas')}${ch('desp','Despachadas')}${ch('todas','Todas')}</div>
+ <div class="chips">${ch('activas','Activas')}${ch('fab','🔧 En fabricación')}${ch('pt','Sin fecha')}${ch('ag','Agendadas')}${ch('venc','Vencidas')}${ch('desp','Despachadas')}${ch('todas','Todas')}</div>
  <select onchange="S.vend=this.value;pintarLista()" style="margin-bottom:12px"><option value="">Todos los vendedores</option>${DB.cfg.vendedores.map(v=>`<option ${S.vend===v?'selected':''}>${esc(v)}</option>`).join('')}</select>
  <div id="lista"></div>`}
 function setF(f){S.filtro=f;render()}
@@ -218,31 +405,33 @@ function pintarLista(){
  const t=hoy(),q=S.q.trim().toLowerCase();
  let L=DB.ordenes.filter(o=>{const e=est(o);
   if(S.filtro==='activas'&&e==='desp')return false;
-  if(['pt','ag','venc','desp'].includes(S.filtro)&&e!==S.filtro)return false;
+  if(['fab','pt','ag','venc','desp'].includes(S.filtro)&&e!==S.filtro)return false;
+  if(USR&&USR.rol==='vend'&&(o.vendedor||'').toLowerCase()!==USR.nombre.toLowerCase())return false;
   if(S.filtro==='hoy'&&(o.despachada||o.fechaEntrega!==t))return false;
   if(S.vend&&o.vendedor!==S.vend)return false;
   if(q&&![o.ot,o.nota,o.cliente,o.producto,...(o.items||[]).map(i=>i.desc)].join(' ').toLowerCase().includes(q))return false;
   return true});
- const rk={venc:0,ag:1,pt:2,desp:3};
+ const rk={venc:0,ag:1,pt:2,fab:3,desp:4};
  L.sort((a,b)=>{const ea=est(a),eb=est(b);if(rk[ea]!==rk[eb])return rk[ea]-rk[eb];
   if(ea==='desp')return(b.fechaDespacho||'').localeCompare(a.fechaDespacho||'');
-  if(ea==='pt'){if(!!a.urgente!==!!b.urgente)return a.urgente?-1:1;return(a.fechaPT||'').localeCompare(b.fechaPT||'')}
+  if(ea==='pt'||ea==='fab'){if(!!a.urgente!==!!b.urgente)return a.urgente?-1:1;return(a.fechaPT||'').localeCompare(b.fechaPT||'')}
   return a.fechaEntrega.localeCompare(b.fechaEntrega)});
- $('#lista').innerHTML=L.length?L.map(card).join(''):`<div class="empty">${DB.ordenes.length?'No hay órdenes con este filtro':'Aún no tienes órdenes.<br>Toca <b>+</b> para agregar la primera.'}</div>`}
+ $('#lista').innerHTML=L.length?L.map(card).join(''):`<div class="empty">${DB.ordenes.length?'No hay órdenes con este filtro':(puede('crear')?'Aún no hay órdenes.<br>Toca <b>+</b> para agregar la primera.':'Aún no hay órdenes para ti.')}</div>`}
 function card(o){const e=est(o),t=hoy();let f;
  if(e==='desp')f='✅ Despachada '+fmt(o.fechaDespacho);
  else if(e==='venc')f='⏰ Vencida hace '+diasEntre(o.fechaEntrega,t)+' d';
  else if(e==='ag')f=o.fechaEntrega===t?'🚚 Entrega HOY':'🚚 '+fmt(o.fechaEntrega)+' (en '+diasEntre(t,o.fechaEntrega)+' d)';
+ else if(e==='fab')f='🔧 En fabricación'+(o.fechaEntrega?' · reservado '+fmt(o.fechaEntrega):'');
  else f='📦 En PT hace '+(o.fechaPT?diasEntre(o.fechaPT,t):0)+' d';
  return`<div class="card st-${e}" onclick="ver('${o.id}')">
  <div class="row"><b class="ot">OT ${esc(o.ot)}</b>${o.urgente&&e!=='desp'?'<span class="pill bad">Urgente</span>':''}<span class="pill ${e}">${LBL[e]}</span></div>
  <div class="cli">${esc(o.cliente)}</div><div class="prod">${esc(o.producto)}${o.cant?' · Cant: '+esc(o.cant):''}${o.nota?' · NE '+esc(o.nota):''}</div>
- <div class="row mut sm"><span>👤 ${esc(o.vendedor||'—')}</span><span>${f}</span></div>${o.notas?.length||o.items?.length||o.adj?`<div class="sm mut" style="margin-top:4px">${o.items?.length?(()=>{const p=progreso(o);return`📋 ${p.listos}/${p.tot} ítems · `})():''}${o.adj?'📎 Nota · ':''}${o.notas?.length?'💬 '+o.notas.length+' nota(s)':''}</div>`:''}</div>`}
+ <div class="row mut sm"><span>👤 ${esc(o.vendedor||'—')}</span><span>${f}</span></div>${o.trelloId?'<span class="sm mut">🔗 Trello </span>':''}${o.notas?.length||o.items?.length||o.adj?`<div class="sm mut" style="margin-top:4px">${o.items?.length?(()=>{const p=progreso(o);return`📋 ${p.listos}/${p.tot} ítems · `})():''}${o.adj?'📎 Nota · ':''}${o.notas?.length?'💬 '+o.notas.length+' nota(s)':''}</div>`:''}</div>`}
 
 /* ========= FORMULARIO ========= */
 let FORM={adj:null,items:[]};
 function abrirForm(id,diaPre,pre){const o=id?byId(id):Object.assign({fechaPT:hoy(),fechaEntrega:diaPre||'',vendedor:DB.cfg.vendedores[0]||''},pre||{});
- FORM={adj:o.adj?{...o.adj}:null,items:(o.items||[]).map(i=>({...i,inc:true}))};
+ FORM={adj:o.adj?{...o.adj}:null,items:(o.items||[]).map(i=>({...i,inc:true})),extra:id?{}:{trelloId:o.trelloId||'',trelloUrl:o.trelloUrl||'',trelloList:o.trelloList||''}};
  const vs=DB.cfg.vendedores.map(v=>`<button type="button" class="chip ${o.vendedor===v?'on':''}" onclick="selV(this)">${esc(v)}</button>`).join('');
  openSheet(`<h3>${id?'Editar orden':'Nueva orden en PT'}</h3>
  <div class="grid2"><div><label>N° OT *</label><input id="fOt" value="${esc(o.ot)}" inputmode="numeric"></div><div><label>Nota de entrega</label><input id="fNota" value="${esc(o.nota)}"></div></div>
@@ -253,7 +442,8 @@ function abrirForm(id,diaPre,pre){const o=id?byId(id):Object.assign({fechaPT:hoy
  <button type="button" class="chip" onclick="syncItems();FORM.items.push({id:uid(),cant:1,desc:'',inc:true});pintarItems(1)">➕ Agregar ítem a mano</button>
  <label>Resumen / producto ${'<span class="mut">(si lo dejas vacío uso el primer ítem)</span>'}</label><input id="fProd" value="${esc(o.producto)}" placeholder="Ej: Tablero NLAB 6 circuitos">
  <input type="hidden" id="fCant" value="${esc(o.cant)}">
- <label>Llegó a PT</label><input type="date" id="fPT" value="${o.fechaPT||hoy()}">
+ <label style="display:flex;align-items:center;gap:8px;color:var(--tx)"><input type="checkbox" id="fFab" style="width:auto" ${o.enFab?'checked':''} onchange="$('#fPTw').hidden=this.checked"> 🔧 Todavía en fabricación</label>
+ <div id="fPTw" ${o.enFab?'hidden':''}><label>Llegó a PT</label><input type="date" id="fPT" value="${o.fechaPT||hoy()}"></div>
  <label>Vendedor</label><div class="radio" id="fVend">${vs}</div>
  <label>Fecha de entrega (opcional)</label>
  <div class="grid2"><input type="date" id="fFE" value="${o.fechaEntrega||''}" oninput="$('#fHint').innerHTML=hintFecha(this.value,'${id||''}')"><button type="button" class="btn sec" style="margin:0" onclick="const s=sugerir('${id||''}');$('#fFE').value=s;$('#fHint').innerHTML=hintFecha(s,'${id||''}')">✨ Sugerir</button></div>
@@ -291,56 +481,66 @@ async function guardar(id){syncItems();
  const v=$('#fVend .chip.on'),fe=g('#fFE');
  let o=id?byId(id):{id:uid(),notas:[],creada:ahora(),reprog:0};
  if(FORM.adj&&FORM.adj.file){try{await IDB.put(FORM.adj.id,{name:FORM.adj.name,type:FORM.adj.type,blob:FORM.adj.file})}catch(e){toast('⚠ No se pudo guardar el adjunto')}
+  subirAdj(FORM.adj.id,FORM.adj,FORM.adj.file);
   const viejo=o.adj&&o.adj.id;delete FORM.adj.file;if(viejo&&viejo!==FORM.adj.id)setTimeout(()=>limpiarAdj(viejo),0)}
- if(id&&o.fechaEntrega&&fe&&fe!==o.fechaEntrega){o.reprog=(o.reprog||0)+1;o.notas.push({t:ahora(),a:'Sistema',txt:`Reprogramada de ${fmt(o.fechaEntrega)} a ${fmt(fe)}`})}
- Object.assign(o,{ot,nota:g('#fNota'),cliente:cli,producto:prod,cant:g('#fCant'),fechaPT:g('#fPT')||hoy(),vendedor:v?v.textContent:'',fechaEntrega:fe,urgente:$('#fUrg').checked,
+ if(id&&o.fechaEntrega&&fe&&fe!==o.fechaEntrega){o.reprog=(o.reprog||0)+1;o.notas.push({t:ahora(),a:quien(),txt:`Reprogramada de ${fmt(o.fechaEntrega)} a ${fmt(fe)}`})}
+ const fab=$('#fFab').checked;if(!id&&FORM.extra.trelloId)Object.assign(o,FORM.extra);
+ Object.assign(o,{ot,nota:g('#fNota'),cliente:cli,producto:prod,cant:g('#fCant'),enFab:fab,fechaPT:fab?'':(g('#fPT')||hoy()),vendedor:v?v.textContent:'',fechaEntrega:fe,urgente:$('#fUrg').checked,
   adj:FORM.adj||null,items:inc.map(i=>({id:i.id||uid(),cant:i.cant,desc:i.desc,ok:!!i.ok,d:i.d||''}))});
- if(!id){const ni=$('#fNotaIni')?.value.trim();if(ni)o.notas.push({t:ahora(),a:'Yo',txt:ni});DB.ordenes.push(o)}
+ if(!id){const ni=$('#fNotaIni')?.value.trim();if(ni)o.notas.push({t:ahora(),a:quien(),txt:ni});DB.ordenes.push(o)}
  save();render();
  if(resto.length){openSheet(`<h3>Quedaron ${resto.length} ítem(s) de la nota sin OT</h3><div class="box">${resto.map(i=>`<div class="kv"><span>${esc(i.cant)}</span><b>${esc(i.desc)}</b></div>`).join('')}</div>
   <div class="mut sm">Si otra parte de esta nota se fabrica en otra OT, créala ahora con estos ítems y la misma nota adjunta.</div>
   <button class="btn" onclick='otraOT(${JSON.stringify(o.id)},${esc(JSON.stringify(resto.map(i=>({cant:i.cant,desc:i.desc}))))})'>➕ Crear otra OT con ellos</button><button class="btn sec" onclick="closeSheet()">No, está bien así</button>`);
   toast(id?'Orden actualizada':'Orden agregada');return}
  closeSheet();toast(id?'Orden actualizada':'Orden agregada')}
-function otraOT(oid,items){const o=byId(oid);abrirForm(null,'',{nota:o.nota,cliente:o.cliente,vendedor:o.vendedor,fechaPT:o.fechaPT,adj:o.adj,items:items.map(i=>({id:uid(),...i}))})}
-async function limpiarAdj(aid){if(!aid||DB.ordenes.some(o=>o.adj&&o.adj.id===aid))return;try{await IDB.del(aid)}catch(e){}}
+function otraOT(oid,items){const o=byId(oid);abrirForm(null,'',{nota:o.nota,cliente:o.cliente,vendedor:o.vendedor,fechaPT:o.fechaPT,enFab:o.enFab,adj:o.adj,items:items.map(i=>({id:uid(),...i}))})}
+async function limpiarAdj(aid){if(!aid||DB.ordenes.some(o=>o.adj&&o.adj.id===aid))return;try{await IDB.del(aid)}catch(e){}borrarAdjNube(aid)}
 
 /* ========= DETALLE ========= */
 function ver(id){const o=byId(id),e=est(o),t=hoy();
  const kv=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
- const autores=['Yo',...DB.cfg.vendedores].map(a=>`<option>${esc(a)}</option>`).join('');
  const notas=(o.notas||[]).slice().reverse().map(n=>`<div class="nota"><small>${esc(n.a)} · ${new Date(n.t).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</small>${esc(n.txt)}</div>`).join('')||'<div class="mut sm">Sin notas todavía.</div>';
  openSheet(`<div class="row"><h3 style="margin:0">OT ${esc(o.ot)}</h3><span class="pill ${e}">${LBL[e]}</span></div>
  <div class="box" style="margin-top:12px">${kv('Cliente',esc(o.cliente))}${kv('Producto',esc(o.producto))}${o.cant?kv('Cantidad',esc(o.cant)):''}${kv('Nota de entrega',esc(o.nota||'—'))}${kv('Vendedor',esc(o.vendedor||'—'))}
  ${kv('Llegó a PT',fmt(o.fechaPT)+(o.fechaPT?` (${diasEntre(o.fechaPT,o.fechaDespacho||t)} d)`:''))}${kv('Entrega programada',fmt(o.fechaEntrega))}${o.despachada?kv('Despachada',fmt(o.fechaDespacho)):''}${o.reprog?kv('Reprogramaciones',o.reprog):''}</div>
- ${o.despachada?`<button class="btn sec" onclick="deshacer('${id}')">↩ Deshacer despacho</button>`:`
- <div class="grid2"><button class="btn" onclick="agendar('${id}')">📅 ${o.fechaEntrega?'Reprogramar':'Agendar'}</button><button class="btn ok" onclick="despachar('${id}')">✅ Despachar</button></div>`}
- <div class="grid2"><button class="btn sec" onclick="abrirForm('${id}')">✏️ Editar</button><button class="btn sec" onclick="copiar(msjVend('${id}'))">📋 Mensaje</button></div>
- ${o.adj?`<button class="btn sec" onclick="verAdj('${id}')">${o.adj.type==='application/pdf'?'📄':'🖼️'} Ver nota adjunta</button>`:`<button class="btn sec" onclick="abrirForm('${id}')">📎 Adjuntar nota de entrega</button>`}
+ ${botonesDetalle(o)}
+ ${o.adj?`<button class="btn sec" onclick="verAdj('${id}')">${o.adj.type==='application/pdf'?'📄':'🖼️'} Ver nota adjunta</button>`:(puede('crear')?`<button class="btn sec" onclick="abrirForm('${id}')">📎 Adjuntar nota de entrega</button>`:'')}
+ ${o.trelloUrl?`<div class="mut sm" style="margin-top:8px">🔗 Importada de Trello · <span style="user-select:all">${esc(o.trelloUrl)}</span></div>`:''}
  ${checklist(o)}
  <h3 style="margin-top:20px">💬 Notas con vendedores</h3>
- <div class="grid2" style="grid-template-columns:1fr 2fr"><select id="nAut">${autores}</select><input id="nTxt" placeholder="Escribe una nota…"></div>
+ <input id="nTxt" placeholder="Escribe una nota como ${esc(quien())}…">
  <button class="btn sec" onclick="addNota('${id}')">Agregar nota</button>${notas}
- <button class="btn bad" style="margin-top:20px" onclick="borrar('${id}')">🗑 Eliminar orden</button>`)}
+ ${puede('crear')?`<button class="btn bad" style="margin-top:20px" onclick="borrar('${id}')">🗑 Eliminar orden</button>`:''}`);S.vista='ver';S.verId=id}
+function botonesDetalle(o){const id=o.id,b=[];
+ if(o.despachada)return puede('crear')?`<button class="btn sec" onclick="deshacer('${id}')">↩ Deshacer despacho</button>`:'';
+ if(o.enFab&&puede('crear'))b.push(`<button class="btn ok" onclick="llegoPT('${id}')">📦 Llegó a PT</button>`);
+ if(puede('agendar'))b.push(`<button class="btn" onclick="agendar('${id}')">📅 ${o.fechaEntrega?'Reprogramar':'Agendar'}</button>`);
+ if(!o.enFab&&puede('despachar'))b.push(`<button class="btn ok" onclick="despachar('${id}')">✅ Despachar</button>`);
+ if(puede('crear'))b.push(`<button class="btn sec" onclick="abrirForm('${id}')">✏️ Editar</button>`);
+ b.push(`<button class="btn sec" onclick="copiar(msjVend('${id}'))">📋 Mensaje</button>`);
+ return`<div class="grid2">${b.join('')}</div>`}
+function llegoPT(id){const o=byId(id);o.enFab=false;o.fechaPT=hoy();o.notas.push({t:ahora(),a:quien(),txt:'Llegó a producto terminado'});save();ver(id);render();toast('📦 Pasó a producto terminado')}
 function progreso(o){const it=o.items||[];return{tot:it.length,listos:it.filter(i=>i.ok||i.d).length,desp:it.filter(i=>i.d).length}}
 function checklist(o){const it=o.items||[];if(!it.length)return'';const p=progreso(o),pend=it.some(i=>!i.d);
  return`<h3 style="margin-top:20px" class="row">📋 Ítems a despachar <span class="pill ${p.listos===p.tot?'desp':'ag'}" id="chkN">${p.listos}/${p.tot}</span></h3>
  <div class="bar"><i id="chkBar" style="width:${p.tot?p.listos/p.tot*100:0}%"></i></div>
- ${it.map(i=>`<label class="chk ${i.d?'done on':i.ok?'on':''}"><input type="checkbox" ${i.ok||i.d?'checked':''} ${i.d||o.despachada?'disabled':''} onchange="tildar('${o.id}','${i.id}',this)">
- <b>${esc(i.cant)}</b><div>${esc(i.desc)}${i.d?`<small>✓ Despachado ${fmt(i.d)}</small>`:''}</div></label>`).join('')}
- ${pend&&!o.despachada?`<div class="grid2"><button class="btn sec" onclick="tildarTodos('${o.id}',true)">☑ Tildar todos</button><button class="btn sec" onclick="tildarTodos('${o.id}',false)">☐ Destildar</button></div>`:''}`}
-function tildar(oid,iid,el){const o=byId(oid),i=o.items.find(x=>x.id===iid);i.ok=el.checked;el.closest('.chk').classList.toggle('on',el.checked);save();
+ ${it.map(i=>`<label class="chk ${i.d?'done on':i.ok?'on':''}"><input type="checkbox" ${i.ok||i.d?'checked':''} ${i.d||o.despachada||!puede('despachar')?'disabled':''} onchange="tildar('${o.id}','${i.id}',this)">
+ <b>${esc(i.cant)}</b><div>${esc(i.desc)}${i.d?`<small>✓ Despachado ${fmt(i.d)}${i.por?' · '+esc(i.por):''}</small>`:i.ok&&i.por?`<small>✓ Verificado por ${esc(i.por)} ${i.t?new Date(i.t).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):''}</small>`:''}</div></label>`).join('')}
+ ${pend&&!o.despachada&&puede('despachar')?`<div class="grid2"><button class="btn sec" onclick="tildarTodos('${o.id}',true)">☑ Tildar todos</button><button class="btn sec" onclick="tildarTodos('${o.id}',false)">☐ Destildar</button></div>`:''}`}
+function tildar(oid,iid,el){const o=byId(oid),i=o.items.find(x=>x.id===iid);i.ok=el.checked;if(el.checked){i.por=quien();i.t=ahora()}else{delete i.por;delete i.t}el.closest('.chk').classList.toggle('on',el.checked);save();
  const p=progreso(o),n=$('#chkN');n.textContent=p.listos+'/'+p.tot;n.className='pill '+(p.listos===p.tot?'desp':'ag');$('#chkBar').style.width=(p.listos/p.tot*100)+'%';render();if(p.listos===p.tot)toast('✓ Todo verificado, listo para despachar')}
-function tildarTodos(oid,v){const o=byId(oid),y=$('#sheetBody').scrollTop;o.items.forEach(i=>{if(!i.d)i.ok=v});save();ver(oid);$('#sheetBody').scrollTop=y;render()}
+function tildarTodos(oid,v){const o=byId(oid),y=$('#sheetBody').scrollTop;o.items.forEach(i=>{if(!i.d){i.ok=v;if(v){i.por=i.por||quien();i.t=i.t||ahora()}else{delete i.por;delete i.t}}});save();ver(oid);$('#sheetBody').scrollTop=y;render()}
 async function verAdj(id){const o=byId(id);openSheet(`<div class="row"><h3 style="margin:0">Nota de OT ${esc(o.ot)}</h3><button class="chip" onclick="ver('${id}')">Volver</button></div><div class="mut sm" style="margin:6px 0 10px">${esc(o.adj.name)}</div><div id="adjV"><div class="load">⏳ Cargando…</div></div>`);
  let r;try{r=await IDB.get(o.adj.id)}catch(e){}
- const v=$('#adjV');if(!v)return;if(!r){v.innerHTML='<div class="empty">El archivo no está guardado en este teléfono.</div>';return}
+ if(!r&&NUBE.on){const v0=$('#adjV');if(v0)v0.innerHTML='<div class="load">⏳ Descargando la nota…</div>';r=await bajarAdj(o.adj.id)}
+ const v=$('#adjV');if(!v)return;if(!r){v.innerHTML='<div class="empty">No se encontró el archivo. Si la nota se subió desde otro teléfono, revisa la conexión.</div>';return}
  if(r.type!=='application/pdf'){v.innerHTML=`<img class="pdfpg" src="${URL.createObjectURL(r.blob)}">`;return}
  try{const lib=await pdfjs(),doc=await lib.getDocument({data:await r.blob.arrayBuffer()}).promise;v.innerHTML='';
   for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p),w=v.clientWidth||340,vp0=pg.getViewport({scale:1}),sc=w/vp0.width*(window.devicePixelRatio||1),vp=pg.getViewport({scale:sc});
    const c=document.createElement('canvas');c.className='pdfpg';c.width=vp.width;c.height=vp.height;v.appendChild(c);await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise}}
  catch(e){console.error(e);v.innerHTML='<div class="empty">No se pudo mostrar el PDF.</div>'}}
-function addNota(id){const t=$('#nTxt').value.trim();if(!t)return toast('Escribe la nota');const o=byId(id);o.notas=o.notas||[];o.notas.push({t:ahora(),a:$('#nAut').value,txt:t});save();ver(id);render();toast('Nota guardada')}
+function addNota(id){const t=$('#nTxt').value.trim();if(!t)return toast('Escribe la nota');const o=byId(id);o.notas=o.notas||[];o.notas.push({t:ahora(),a:quien(),txt:t});save();ver(id);render();toast('Nota guardada')}
 function agendar(id){const o=byId(id),s=o.fechaEntrega&&o.fechaEntrega>=hoy()?o.fechaEntrega:sugerir(id);
  openSheet(`<h3>${o.fechaEntrega?'Reprogramar':'Agendar'} OT ${esc(o.ot)}</h3>
  <label>Fecha de entrega</label><input type="date" id="aF" value="${s}" oninput="$('#aH').innerHTML=hintFecha(this.value,'${id}')"><div id="aH">${hintFecha(s,id)}</div>
@@ -349,10 +549,10 @@ function agendar(id){const o=byId(id),s=o.fechaEntrega&&o.fechaEntrega>=hoy()?o.
  <button class="btn" onclick="confAgendar('${id}')">Confirmar fecha</button>${o.fechaEntrega?`<button class="btn sec" onclick="quitarFecha('${id}')">Quitar fecha</button>`:''}<button class="btn sec" onclick="ver('${id}')">Volver</button>`)}
 function proximos(id){const r=[];let d=hoy();for(let i=0;i<45&&r.length<6;i++){if(esDiaDesp(d)&&carga(d,id)<DB.cfg.cupo)r.push(d);d=sumar(d,1)}return r}
 function confAgendar(id){const o=byId(id),f=$('#aF').value;if(!f)return toast('Elige una fecha');
- if(o.fechaEntrega&&o.fechaEntrega!==f){o.reprog=(o.reprog||0)+1;const m=$('#aM')?.value.trim();o.notas.push({t:ahora(),a:'Sistema',txt:`Reprogramada de ${fmt(o.fechaEntrega)} a ${fmt(f)}${m?' — Motivo: '+m:''}`})}
- else if(!o.fechaEntrega)o.notas.push({t:ahora(),a:'Sistema',txt:'Agendada para '+fmt(f)});
+ if(o.fechaEntrega&&o.fechaEntrega!==f){o.reprog=(o.reprog||0)+1;const m=$('#aM')?.value.trim();o.notas.push({t:ahora(),a:quien(),txt:`Reprogramada de ${fmt(o.fechaEntrega)} a ${fmt(f)}${m?' — Motivo: '+m:''}`})}
+ else if(!o.fechaEntrega)o.notas.push({t:ahora(),a:quien(),txt:'Agendada para '+fmt(f)});
  o.fechaEntrega=f;save();ver(id);render();toast('Entrega agendada')}
-function quitarFecha(id){const o=byId(id);o.notas.push({t:ahora(),a:'Sistema',txt:'Se quitó la fecha '+fmt(o.fechaEntrega)});o.fechaEntrega='';save();ver(id);render()}
+function quitarFecha(id){const o=byId(id);o.notas.push({t:ahora(),a:quien(),txt:'Se quitó la fecha '+fmt(o.fechaEntrega)});o.fechaEntrega='';save();ver(id);render()}
 function despachar(id){const o=byId(id),pend=(o.items||[]).filter(i=>!i.d);
  if(pend.length){const sel=pend.filter(i=>i.ok);
   if(!sel.length)return toast('Tilda los ítems que estás despachando');
@@ -363,15 +563,15 @@ function despachar(id){const o=byId(id),pend=(o.items||[]).filter(i=>!i.d);
    <button class="btn" onclick="parcial('${id}')">🚚 Despachar parcial y reagendar lo que falta</button><button class="btn sec" onclick="ver('${id}')">Volver y revisar</button>`)}}
  preguntar('¿Marcar OT '+esc(o.ot)+' como despachada hoy?',()=>despacharTodo(id),'✅ Sí, despachada',0,()=>ver(id))}
 function despacharTodo(id){const o=byId(id);
- (o.items||[]).forEach(i=>{if(!i.d){i.d=hoy();i.ok=true}});
+ (o.items||[]).forEach(i=>{if(!i.d){i.d=hoy();i.ok=true;i.por=i.por||quien()}});
  o.despachada=true;o.fechaDespacho=hoy();if(!o.fechaEntrega)o.fechaEntrega=hoy();
- o.notas.push({t:ahora(),a:'Sistema',txt:'Despachada'+(o.fechaDespacho>o.fechaEntrega?` con ${diasEntre(o.fechaEntrega,o.fechaDespacho)} d de retraso`:' a tiempo')});
+ o.notas.push({t:ahora(),a:quien(),txt:'Despachada'+(o.fechaDespacho>o.fechaEntrega?` con ${diasEntre(o.fechaEntrega,o.fechaDespacho)} d de retraso`:' a tiempo')});
  save();closeSheet();render();toast('✅ Despachada')}
 function parcial(id){const o=byId(id),m=$('#pM').value.trim();if(!m)return toast('Escribe el motivo');
  const sel=o.items.filter(i=>!i.d&&i.ok),falt=o.items.filter(i=>!i.d&&!i.ok);sel.forEach(i=>i.d=hoy());o.parciales=(o.parciales||0)+1;
- o.notas.push({t:ahora(),a:'Sistema',txt:`Despacho parcial (${sel.length} ítems). Pendiente: ${falt.map(i=>i.cant+' '+i.desc).join('; ')} — Motivo: ${m}`});
+ o.notas.push({t:ahora(),a:quien(),txt:`Despacho parcial (${sel.length} ítems). Pendiente: ${falt.map(i=>i.cant+' '+i.desc).join('; ')} — Motivo: ${m}`});
  save();render();toast('Parcial registrado. Agenda lo pendiente');agendar(id)}
-function deshacer(id){const o=byId(id);o.despachada=false;o.fechaDespacho='';const u=o.items?.reduce((m,i)=>i.d>m?i.d:m,'');(o.items||[]).forEach(i=>{if(i.d===u)i.d=''});o.notas.push({t:ahora(),a:'Sistema',txt:'Despacho deshecho'});save();ver(id);render()}
+function deshacer(id){const o=byId(id);o.despachada=false;o.fechaDespacho='';const u=o.items?.reduce((m,i)=>i.d>m?i.d:m,'');(o.items||[]).forEach(i=>{if(i.d===u)i.d=''});o.notas.push({t:ahora(),a:quien(),txt:'Despacho deshecho'});save();ver(id);render()}
 function borrar(id){preguntar('¿Eliminar la OT '+esc(byId(id).ot)+'? No se puede deshacer.',()=>borrarYa(id),'🗑 Sí, eliminar',1,()=>ver(id))}
 function borrarYa(id){const aid=byId(id).adj?.id;DB.ordenes=DB.ordenes.filter(o=>o.id!==id);save();limpiarAdj(aid);closeSheet();render();toast('Orden eliminada')}
 function msjVend(id){const o=byId(id);return`Hola ${o.vendedor||''}, la OT ${o.ot}${o.nota?' (NE '+o.nota+')':''} de ${o.cliente} — ${o.producto}${o.cant?' x'+o.cant:''} está en producto terminado.`+(o.items?.length?'\nÍtems:\n'+o.items.map(i=>'• '+i.cant+' '+i.desc+(i.d?' (despachado)':'')).join('\n')+'\n':' ')+(o.fechaEntrega?`Entrega programada: ${fmt(o.fechaEntrega)}.`:'Indícame qué día la entregamos.')}
@@ -394,29 +594,30 @@ function vCal(){if(!S.mes){const d=new Date();S.mes=[d.getFullYear(),d.getMonth(
 function mes(d){let[y,m]=S.mes;m+=d;if(m<0){m=11;y--}if(m>11){m=0;y++}S.mes=[y,m];render()}
 function asignarDia(){const L=DB.ordenes.filter(o=>est(o)==='pt');
  openSheet(`<h3>Asignar al ${fmt(S.dia)}</h3>${L.map(o=>`<div class="card" onclick="asignar('${o.id}')"><b>OT ${esc(o.ot)}</b> · ${esc(o.cliente)}<div class="prod">${esc(o.producto)} · 👤 ${esc(o.vendedor||'—')}</div></div>`).join('')}<button class="btn sec" onclick="closeSheet()">Cancelar</button>`)}
-function asignar(id){const o=byId(id);o.fechaEntrega=S.dia;o.notas.push({t:ahora(),a:'Sistema',txt:'Agendada para '+fmt(S.dia)});save();closeSheet();render();toast('Asignada al '+fmt(S.dia))}
+function asignar(id){const o=byId(id);o.fechaEntrega=S.dia;o.notas.push({t:ahora(),a:quien(),txt:'Agendada para '+fmt(S.dia)});save();closeSheet();render();toast('Asignada al '+fmt(S.dia))}
 
 /* ========= AJUSTES E INDICADORES ========= */
 function vAjustes(){const c=DB.cfg;
+ const ses=`<div class="box"><div class="kv"><span>Sesión</span><b>${esc(USR.nombre)} · ${ROLES[USR.rol]}</b></div><div class="kv"><span>Datos</span><b>${NUBE.on?'☁️ Compartidos en la nube':'📱 Solo en este teléfono'}</b></div>${NUBE.on?'<button class="btn sec" onclick="cerrarSesion()">Cerrar sesión</button>':''}</div>`;
  const D=DB.ordenes.filter(o=>o.despachada&&o.fechaEntrega&&o.fechaDespacho);
  const at=D.filter(o=>o.fechaDespacho<=o.fechaEntrega).length,pct=D.length?Math.round(at/D.length*100):0;
  const conPT=D.filter(o=>o.fechaPT),prom=conPT.length?(conPT.reduce((s,o)=>s+diasEntre(o.fechaPT,o.fechaDespacho),0)/conPT.length).toFixed(1):'—';
  const rep=DB.ordenes.reduce((s,o)=>s+(o.reprog||0),0);
  const filas=c.vendedores.map(v=>{const d=D.filter(o=>o.vendedor===v),a=d.filter(o=>o.fechaDespacho<=o.fechaEntrega).length,r=DB.ordenes.filter(o=>o.vendedor===v).reduce((s,o)=>s+(o.reprog||0),0),p=DB.ordenes.filter(o=>o.vendedor===v&&!o.despachada).length;
   return`<tr><td>${esc(v)}</td><td>${p}</td><td>${d.length}</td><td>${d.length?Math.round(a/d.length*100)+'%':'—'}</td><td>${r}</td></tr>`}).join('');
- return`<div class="box"><h3 style="margin-top:0">📈 Mejora continua</h3>
+ return ses+`<div class="box"><h3 style="margin-top:0">📈 Mejora continua</h3>
  <div class="grid2"><div><div class="big" style="color:${pct>=90?'var(--ok)':pct>=70?'var(--ag)':'var(--bad)'}">${D.length?pct+'%':'—'}</div><div class="mut sm">Entregas a tiempo (${at}/${D.length})</div></div>
  <div><div class="big">${prom}</div><div class="mut sm">Días promedio de PT a despacho</div></div></div>
  <div class="kv" style="margin-top:8px"><span>Reprogramaciones totales</span><b>${rep}</b></div><div class="kv"><span>Despachos parciales</span><b>${DB.ordenes.reduce((s,o)=>s+(o.parciales||0),0)}</b></div>
  <table style="margin-top:8px"><tr><th>Vendedor</th><th>Activas</th><th>Desp.</th><th>A tiempo</th><th>Reprog.</th></tr>${filas}</table>
  <div class="mut sm" style="margin-top:8px">Meta sugerida: 90% a tiempo. Revisa los motivos de reprogramación en las notas para atacar la causa más repetida.</div></div>
- <div class="box"><h3 style="margin-top:0">👥 Vendedores</h3>${c.vendedores.map((v,i)=>`<div class="vrow"><input value="${esc(v)}" onchange="renV(${i},this.value)"><button onclick="delV(${i})">✕</button></div>`).join('')}
+ ${puede('ajustes')?`${NUBE.on?vUsuarios():''}${vTrello()}<div class="box"><h3 style="margin-top:0">👥 Vendedores</h3>${c.vendedores.map((v,i)=>`<div class="vrow"><input value="${esc(v)}" onchange="renV(${i},this.value)"><button onclick="delV(${i})">✕</button></div>`).join('')}
  <button class="btn sec" onclick="addV()">➕ Agregar vendedor</button></div>
  <div class="box"><h3 style="margin-top:0">🚚 Días de despacho</h3><div class="radio">${[1,2,3,4,5,6,0].map(d=>`<button class="chip ${c.dias.includes(d)?'on':''}" onclick="togD(${d})">${DIAS[d]}</button>`).join('')}</div>
  <label>Máximo de entregas por día</label><div class="grid2" style="grid-template-columns:50px 1fr 50px"><button class="btn sec" style="margin:0" onclick="cupo(-1)">−</button><div class="big" style="text-align:center">${c.cupo}</div><button class="btn sec" style="margin:0" onclick="cupo(1)">+</button></div></div>
- <div class="box"><h3 style="margin-top:0">💾 Respaldo</h3><div class="mut sm">Los datos se guardan solo en este teléfono. Haz un respaldo de vez en cuando y guárdalo en WhatsApp o Drive. (El respaldo incluye órdenes, ítems y notas; los PDF adjuntos se quedan en el teléfono.)</div>
- <button class="btn sec" onclick="copiar(JSON.stringify(DB))">📋 Copiar respaldo</button><button class="btn sec" onclick="restaurar()">♻️ Restaurar respaldo</button><button class="btn sec" onclick="copiar(csv())">📊 Copiar tabla para Excel</button></div>
- <div class="mut sm" style="text-align:center">Entregas PT v1.2 · ${DB.ordenes.length} órdenes registradas</div>`}
+ <div class="box"><h3 style="margin-top:0">💾 Respaldo</h3><div class="mut sm">${NUBE.on?'Los datos se guardan en la nube y en cada teléfono. Igual puedes copiar un respaldo de órdenes, ítems y notas.':'Los datos se guardan solo en este teléfono. Haz un respaldo de vez en cuando y guárdalo en WhatsApp o Drive.'}</div>
+ <button class="btn sec" onclick="copiar(JSON.stringify(DB))">📋 Copiar respaldo</button><button class="btn sec" onclick="restaurar()">♻️ Restaurar respaldo</button><button class="btn sec" onclick="copiar(csv())">📊 Copiar tabla para Excel</button></div>`:''}
+ <div class="mut sm" style="text-align:center">Entregas PT v2.0 · ${DB.ordenes.length} órdenes registradas</div>`}
 function renV(i,v){v=v.trim();if(!v)return render();const old=DB.cfg.vendedores[i];DB.cfg.vendedores[i]=v;DB.ordenes.forEach(o=>{if(o.vendedor===old)o.vendedor=v});save();toast('Vendedor actualizado')}
 function delV(i){preguntar('¿Quitar a '+esc(DB.cfg.vendedores[i])+'? Sus órdenes se conservan.',()=>{DB.cfg.vendedores.splice(i,1);save();closeSheet();render()},'Quitar',1)}
 function addV(){openSheet(`<h3>Nuevo vendedor</h3><label for="vN">Nombre (como sale en las notas)</label><input id="vN" placeholder="Ej: ARNALDO RIVERO"><button class="btn" onclick="const v=$('#vN').value.trim();if(!v)return toast('Escribe el nombre');DB.cfg.vendedores.push(v);save();closeSheet();render()">Agregar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`);setTimeout(()=>$('#vN')?.focus(),50)}
@@ -428,7 +629,7 @@ function csv(){const h=['OT','Nota entrega','Cliente','Producto','Cantidad','Ven
 function restaurar(){openSheet(`<h3>Restaurar respaldo</h3><div class="mut sm">Pega aquí el texto del respaldo. Reemplazará los datos actuales.</div><textarea id="rT" rows="8"></textarea><button class="btn" onclick="confRest()">Restaurar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`)}
 function confRest(){try{const d=JSON.parse($('#rT').value);if(!Array.isArray(d.ordenes)||!d.cfg)throw 0;preguntar('¿Reemplazar todos los datos actuales por el respaldo?',()=>{DB=d;save();closeSheet();render();toast('Respaldo restaurado')},'♻️ Sí, reemplazar',1)}catch(e){toast('Texto de respaldo no válido')}}
 
-render();
+arranque();
 </script>
 </body>
 </html>

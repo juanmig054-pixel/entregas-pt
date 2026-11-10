@@ -1,4 +1,14 @@
-# Entregas PT — cómo generar el APK
+# Entregas PT
+
+## Novedades v2.0 — varios teléfonos conectados
+- Datos compartidos en tiempo real con Firebase (proyecto `entregas-pt`). Funciona sin señal y sincroniza al volver.
+- Usuarios con nombre y PIN. Roles: **Supervisor** (todo), **Despacho** (tilda ítems y despacha), **Vendedor** (solo ve sus notas y comenta).
+- Cada tilde guarda quién la hizo y a qué hora. Las notas PDF se guardan en la nube y se ven desde cualquier teléfono.
+- Estado nuevo 🔧 **En fabricación** y botón **Llegó a PT**.
+- Importación desde Trello (tablero PLANIFICACION INSELARA): "en proceso" entra como En fabricación y "Producto Terminado" como En PT. Si la tarjeta se mueve en Trello, la app la pasa sola a PT.
+- Reglas de seguridad de Firestore en `firestore.rules`.
+
+# Cómo generar el APK
 
 ## Paso a paso (igual que con tu app de finanzas)
 

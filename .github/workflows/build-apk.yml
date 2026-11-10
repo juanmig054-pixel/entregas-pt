@@ -23,8 +23,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Instalar Capacitor
+      - name: Instalar Capacitor y Firebase
         run: npm install
+
+      - name: Copiar Firebase dentro de la app
+        run: |
+          mkdir -p www/lib
+          cp node_modules/firebase/firebase-app-compat.js node_modules/firebase/firebase-auth-compat.js node_modules/firebase/firebase-firestore-compat.js www/lib/
 
       - name: Crear proyecto Android
         run: |

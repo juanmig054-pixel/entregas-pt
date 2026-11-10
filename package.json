@@ -1,11 +1,12 @@
 {
   "name": "entregas-pt",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Control de entregas de producto terminado",
   "dependencies": {
     "@capacitor/android": "^7.0.0",
     "@capacitor/cli": "^7.0.0",
-    "@capacitor/core": "^7.0.0"
+    "@capacitor/core": "^7.0.0",
+    "firebase": "10.14.1"
   }
 }

@@ -30,10 +30,13 @@ jobs:
         run: |
           mkdir -p www/lib
           cp node_modules/firebase/firebase-app-compat.js node_modules/firebase/firebase-auth-compat.js node_modules/firebase/firebase-firestore-compat.js www/lib/
+          cp node_modules/qrcode-generator/qrcode.js www/lib/qrcode.js
+          cp node_modules/jsqr/dist/jsQR.js www/lib/jsQR.js
 
       - name: Crear proyecto Android
         run: |
           npx cap add android
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
           npx cap sync android
 
       - name: Usar firma fija (permite instalar encima de la versión anterior)

@@ -1,5 +1,12 @@
 # Entregas PT
 
+## Novedades v2.2 — viajes, QR y avisos
+- **🚛 Armar viaje**: varias OT verificadas salen juntas con chofer y vehículo; se registra salida y regreso al galpón.
+- **🏷 Etiqueta QR** por OT para pegar en el tablero y **📷 Escanear QR** para abrir la OT al instante.
+- **Avisos**: salidas, entregas, despachos parciales y OT agendadas para hoy o mañana (llegan mientras la app está abierta o en segundo plano).
+- **Trello automático**: revisa las listas al abrir y cada 10 minutos; mueve a PT lo que pasó a "Producto Terminado" y avisa de tarjetas nuevas.
+- **Mejora continua**: tiempo promedio por etapa y ranking de causas de retraso (con causas rápidas al reprogramar o hacer parciales).
+
 ## Novedades v2.1 — trazabilidad hasta el cliente
 - Pantalla **Hoy**: vencidas, en riesgo, para despachar hoy, en ruta, entregadas y mañana.
 - Estados **🛣 En ruta** y **✅ Entregada**. Al entregar: quién recibe, cédula, hasta 3 fotos y firma en pantalla.

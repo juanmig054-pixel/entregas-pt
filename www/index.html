@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Entregas PT</title>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--line:#e5e7eb;--pri:#0f766e;--pri2:#ccfbf1;
+--pt:#2563eb;--pt2:#dbeafe;--ag:#b45309;--ag2:#fef3c7;--ok:#15803d;--ok2:#dcfce7;--bad:#dc2626;--bad2:#fee2e2}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#1a1d23;--tx:#e8eaed;--mut:#9aa1ab;--line:#2a2f37;--pri:#2dd4bf;--pri2:#134e4a;
+--pt:#60a5fa;--pt2:#1e3a5f;--ag:#fbbf24;--ag2:#4a3410;--ok:#4ade80;--ok2:#14391f;--bad:#f87171;--bad2:#4c1d1d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px}
+header h1{margin:0;font-size:20px}header small{opacity:.85}
+@media (prefers-color-scheme:dark){header{background:#134e4a}}
+main{padding:14px 16px 110px;max-width:720px;margin:auto}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.kpi{background:var(--card);border-radius:12px;padding:10px 6px;text-align:center;border:2px solid transparent}
+.kpi b{display:block;font-size:22px}.kpi span{font-size:11px;color:var(--mut)}
+.kpi.on{border-color:var(--pri)}.kpi.red b{color:var(--bad)}
+.search{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:15px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0;scrollbar-width:none}
+.chip{flex:none;padding:7px 12px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:13px}
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.card{background:var(--card);border-radius:12px;padding:12px;margin-bottom:10px;border-left:5px solid var(--pt)}
+.card.st-ag{border-left-color:var(--ag)}.card.st-venc{border-left-color:var(--bad)}.card.st-desp{border-left-color:var(--ok);opacity:.8}
+.row{display:flex;align-items:center;gap:6px;justify-content:space-between;flex-wrap:wrap}
+.ot{font-size:16px;margin-right:auto}.cli{font-weight:600;margin-top:4px}.prod{color:var(--mut);margin:2px 0 6px}
+.mut{color:var(--mut)}.sm{font-size:13px}
+.pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--pt2);color:var(--pt)}
+.pill.ag{background:var(--ag2);color:var(--ag)}.pill.venc,.pill.bad{background:var(--bad2);color:var(--bad)}.pill.desp{background:var(--ok2);color:var(--ok)}
+.empty{text-align:center;color:var(--mut);padding:40px 10px}
+#fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;border:0;background:var(--pri);color:#fff;font-size:32px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:6}
+@media (prefers-color-scheme:dark){#fab{color:#0f1115}}
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+.nav button{flex:1;border:0;background:none;color:var(--mut);padding:10px 0 12px;font-size:12px}
+.nav button i{display:block;font-style:normal;font-size:20px}.nav button.on{color:var(--pri);font-weight:700}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10;align-items:flex-end;justify-content:center}
+#sheet.on{display:flex}
+#sheetBody{background:var(--bg);width:100%;max-width:720px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom))}
+#sheetBody h3{margin:0 0 12px}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+input,select,textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--tx);font-size:15px;font-family:inherit}
+.btn{display:block;width:100%;padding:13px;border-radius:12px;border:0;background:var(--pri);color:#fff;font-size:15px;font-weight:700;margin-top:10px}
+@media (prefers-color-scheme:dark){.btn{color:#0f1115}}
+.btn.sec{background:var(--card);color:var(--tx);border:1px solid var(--line)}
+.btn.ok{background:var(--ok);color:#fff}.btn.bad{background:none;color:var(--bad);border:1px solid var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hint{font-size:13px;margin-top:6px;font-weight:600}.hint.g{color:var(--ok)}.hint.w{color:var(--bad)}
+.radio{display:flex;flex-wrap:wrap;gap:6px}
+.box{background:var(--card);border-radius:12px;padding:12px;margin-bottom:12px}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);gap:10px}.kv:last-child{border:0}
+.kv span{color:var(--mut)}.kv b{text-align:right}
+.nota{border-left:3px solid var(--pri);padding:6px 10px;margin:8px 0;background:var(--card);border-radius:0 8px 8px 0}
+.nota small{color:var(--mut);display:block}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .h{text-align:center;font-size:11px;color:var(--mut);padding:4px 0}
+.day{aspect-ratio:1;background:var(--card);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;border:2px solid transparent;position:relative}
+.day.off{opacity:.35}.day.some{background:var(--ag2)}.day.full{background:var(--bad2)}
+.day.today{border-color:var(--pri)}.day.sel{background:var(--pri);color:#fff}
+.day em{font-style:normal;font-size:10px;font-weight:700}
+.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calhead button{border:0;background:var(--card);color:var(--tx);width:42px;height:42px;border-radius:10px;font-size:18px}
+.leg{display:flex;gap:12px;font-size:12px;color:var(--mut);margin:10px 0}
+.leg i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:4px}
+.vrow{display:flex;gap:6px;margin-bottom:6px}.vrow button{flex:none;width:46px;border:1px solid var(--line);background:var(--card);color:var(--bad);border-radius:10px;font-size:18px}
+.big{font-size:26px;font-weight:800}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+#toast{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:20}
+#toast.on{opacity:.95}
+.irow{display:grid;grid-template-columns:30px 62px 1fr 38px;gap:6px;align-items:center;margin-bottom:6px}
+.irow input[type=checkbox]{width:22px;height:22px;accent-color:var(--pri)}
+.irow input,.irow textarea{padding:8px;font-size:14px}.irow textarea{font-size:13px;resize:none;line-height:1.3}.irow.off input:not([type=checkbox]),.irow.off textarea{opacity:.4;text-decoration:line-through}
+.irow button{border:1px solid var(--line);background:var(--card);color:var(--bad);border-radius:8px;height:38px;font-size:16px}
+.adj{display:flex;align-items:center;gap:8px;background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:10px;font-size:14px}
+.adj span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chk{display:flex;gap:10px;align-items:flex-start;background:var(--card);border-radius:10px;padding:12px;margin-bottom:6px;border:2px solid transparent}
+.chk input{width:24px;height:24px;flex:none;accent-color:var(--ok);margin:0}
+.chk.on{border-color:var(--ok);background:var(--ok2)}.chk.done{opacity:.6}
+.chk b{flex:none;min-width:34px;text-align:right}.chk div{flex:1}.chk small{display:block;color:var(--ok);font-weight:600}
+.bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0 10px}.bar i{display:block;height:100%;background:var(--ok);transition:.3s}
+.pdfpg{width:100%;border-radius:6px;margin-bottom:8px;background:#fff}
+.load{text-align:center;color:var(--mut);padding:10px;font-size:14px}
+</style>
+</head>
+<body>
+<header><h1>📦 Entregas PT</h1><small id="hoyTxt"></small></header>
+<main id="main"></main>
+<button id="fab" onclick="abrirForm()" aria-label="Nueva orden">+</button>
+<nav class="nav">
+<button data-tab="inicio" onclick="ir('inicio')"><i>🏠</i>Inicio</button>
+<button data-tab="cal" onclick="ir('cal')"><i>📅</i>Calendario</button>
+<button data-tab="ajustes" onclick="ir('ajustes')"><i>⚙️</i>Ajustes</button>
+</nav>
+<div id="sheet" onclick="if(event.target===this)closeSheet()"><div id="sheetBody"></div></div>
+<div id="toast"></div>
+<script>
+/* ========= DATOS ========= */
+const KEY='entregasPT_v1';
+const LBL={pt:'En PT · sin fecha',ag:'Agendada',venc:'Vencida',desp:'Despachada'};
+const DIAS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+let DB=load();
+function defaults(){return{ordenes:[],cfg:{vendedores:['Vendedor 1','Vendedor 2','Vendedor 3'],dias:[1,2,3,4,5],cupo:4}}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.ordenes)&&d.cfg)return d}catch(e){}return defaults()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){toast('⚠ No se pudo guardar')}}
+let S={tab:'inicio',filtro:'activas',vend:'',q:'',mes:null,dia:null};
+let sheetOpen=false;
+
+/* ========= UTILIDADES ========= */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const hoy=()=>iso(new Date());
+const parse=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const diasEntre=(a,b)=>Math.round((parse(b)-parse(a))/864e5);
+const sumar=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
+const fmt=s=>{if(!s)return'—';const d=parse(s);return DIAS[d.getDay()]+' '+d.getDate()+' '+MESES[d.getMonth()].slice(0,3)};
+const ahora=()=>new Date().toISOString();
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1800)}
+function est(o){if(o.despachada)return'desp';if(!o.fechaEntrega)return'pt';return o.fechaEntrega<hoy()?'venc':'ag'}
+const byId=id=>DB.ordenes.find(o=>o.id===id);
+
+/* ========= ADJUNTOS (se guardan en el teléfono, IndexedDB) ========= */
+const IDB=(()=>{let db;
+ const open=()=>db?Promise.resolve(db):new Promise((ok,ko)=>{const r=indexedDB.open('entregasPT',1);r.onupgradeneeded=()=>r.result.createObjectStore('adj');r.onsuccess=()=>ok(db=r.result);r.onerror=()=>ko(r.error)});
+ const tx=(m,f)=>open().then(d=>new Promise((ok,ko)=>{const t=d.transaction('adj',m),q=f(t.objectStore('adj'));t.oncomplete=()=>ok(q.result);t.onerror=()=>ko(t.error)}));
+ return{put:(k,v)=>tx('readwrite',s=>s.put(v,k)),get:k=>tx('readonly',s=>s.get(k)),del:k=>tx('readwrite',s=>s.delete(k))}})();
+
+/* ========= LECTOR DE NOTAS DE ENTREGA ========= */
+let PDFJS=null;
+async function pdfjs(){if(PDFJS)return PDFJS;const m=await import('./lib/pdf.min.js');m.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js';return PDFJS=m}
+const NUM=/^\d+(?:[.,]\d+)*$/;
+function toNum(s){s=String(s).trim();
+ if(s.includes(',')&&s.includes('.'))s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+ else if(s.includes(','))s=s.replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+ const n=parseFloat(s);return isNaN(n)?'':+n.toFixed(2)}
+// 1) Lee el PDF y arma las líneas de texto con su posición en la hoja
+async function leerPDF(buf){const lib=await pdfjs();const doc=await lib.getDocument({data:buf}).promise;const lines=[];
+ for(let p=1;p<=doc.numPages;p++){const tc=await(await doc.getPage(p)).getTextContent();const rows=[];
+  tc.items.forEach(it=>{if(!it.str||!it.str.trim())return;const x=it.transform[4],y=it.transform[5];let r=rows.find(r=>Math.abs(r.y-y)<3);if(!r)rows.push(r={y,its:[]});r.its.push({s:it.str,x,w:it.width||it.str.length*4})});
+  rows.sort((a,b)=>b.y-a.y).forEach(r=>{r.its.sort((a,b)=>a.x-b.x);const m=[];
+   r.its.forEach(i=>{const u=m[m.length-1];if(u&&i.x-(u.x+u.w)<3){u.s+=(i.x-(u.x+u.w)>.8?' ':'')+i.s;u.w=i.x+i.w-u.x}else m.push({...i})});
+   lines.push(m.map(c=>({...c,s:c.s.trim()})).filter(c=>c.s))})}
+ return lines}
+const txt=l=>l.map(c=>c.s).join(' ');
+const RX_FIN=/(sub-?total|^total|\btotal\b|base imponible|\bi\.?v\.?a\b|observaci|son:|recibido|recib[ií] conforme|firma|neto a pagar)/i;
+const RX_NO=/(r\.?i\.?f|tel[eé]f|fecha|direcci|p[aá]gina|cliente|vendedor|nota de entrega|condici)/i;
+const tipoCol=s=>{s=s.toLowerCase();if(/cant/.test(s))return'cant';if(/desc|art[ií]c|produc|concep|detalle/.test(s))return'desc';return'otro'};
+// 2) Busca la fila de títulos (Cantidad / Descripción) y lee la tabla columna por columna
+function extraerItems(lines){const items=[];let cols=null,tabla=false;
+ for(const l of lines){const t=txt(l),tl=t.toLowerCase();
+  if(/cant/.test(tl)&&/(desc|art[ií]c|produc|concep|detalle)/.test(tl)){cols=l.map(c=>({k:tipoCol(c.s),x:c.x,c:c.x+c.w/2}));cols.forEach((k,j)=>{k.a=j?(cols[j-1].c+k.c)/2:-1e9;k.b=j<cols.length-1?(k.c+cols[j+1].c)/2:1e9});tabla=cols.some(c=>c.k==='cant')&&cols.some(c=>c.k==='desc');continue}
+  if(!tabla)continue;if(RX_FIN.test(tl)){tabla=false;continue}
+  let cant='';const desc=[];
+  l.forEach(c=>{const n=NUM.test(c.s.replace(/^[$]\s*/,''));const col=colDe(cols,c);
+   if(col.k==='cant'&&n&&cant==='')cant=c.s;else if(col.k==='desc')desc.push(c.s)});
+  const d=desc.join(' ').trim();if(!d)continue;
+  if(cant!=='')items.push({desc:d,cant:toNum(cant)});else if(items.length)items[items.length-1].desc+=' '+d}
+ return items.length?items:extraerSimple(lines)}
+// Asigna cada texto a la columna con la que más se solapa (sirve con títulos centrados o alineados a la izquierda)
+function colDe(cols,c){const x1=c.x,x2=c.x+Math.max(c.w,2);let best=cols[0],bo=-1;cols.forEach(k=>{const o=Math.min(x2,k.b)-Math.max(x1,k.a);if(o>bo){bo=o;best=k}});return best}
+// 3) Plan B si la nota no tiene títulos claros: líneas que empiezan con una cantidad
+function extraerSimple(lines){const r=[];lines.forEach(l=>{const t=txt(l);if(l.length<2||RX_FIN.test(t)||RX_NO.test(t)||!NUM.test(l[0].s))return;
+ const q=toNum(l[0].s);if(!q||q>9999)return;const rest=l.slice(1);while(rest.length&&NUM.test(rest[rest.length-1].s.replace(/[$Bs\s]/g,'')))rest.pop();
+ const d=txt(rest);if(/[a-záéíóúñ]{3}/i.test(d))r.push({desc:d,cant:q})});return r}
+function extraerDatos(lines){const r={nota:'',cliente:'',vendedor:''},esLbl=s=>/:\s*$/.test(s);
+ lines.forEach(l=>l.forEach((c,k)=>{const s=c.s.toLowerCase(),sig=l[k+1]&&!esLbl(l[k+1].s)?l[k+1].s:'';
+  const ins=c.s.match(/^[^:]{2,25}:\s*(.+)$/);const val=(esLbl(c.s)?sig:(ins?ins[1].split(/\s{2,}|\s+(?=r\.?i\.?f|tel[eé]f|fecha)/i)[0]:''));if(!val)return;
+  if(/^cliente\b/.test(s)&&!r.cliente)r.cliente=val.trim();
+  else if(/^(nota\s*)?n[°ºo]\.?\s*(de\s*nota)?\s*:?|^nota\s*n/.test(s)&&!/rif|tel/.test(s)&&!r.nota)r.nota=val.trim();
+  else if(/^vendedor/.test(s)&&!r.vendedor)r.vendedor=val.trim()}));
+ if(!r.nota){const t=lines.map(txt).join('\n'),m=t.match(/nota\s*(?:de\s*entrega\s*)?n[°ºo]\.?\s*:?\s*([A-Z0-9][\w-]{2,})/i)||t.match(/\b(NE[-\s]?[\d-]{4,})\b/i);if(m)r.nota=m[1]}
+ return r}
+function vendedorDe(nombre){if(!nombre)return null;const n=nombre.toLowerCase();return DB.cfg.vendedores.find(v=>{const w=v.toLowerCase();return n.includes(w)||w.includes(n)||n.split(/\s+/)[0]===w.split(/\s+/)[0]})||null}
+
+/* ========= DISPONIBILIDAD DE DESPACHO ========= */
+const esDiaDesp=s=>DB.cfg.dias.includes(parse(s).getDay());
+const carga=(s,excluir)=>DB.ordenes.filter(o=>!o.despachada&&o.fechaEntrega===s&&o.id!==excluir).length;
+function sugerir(excluir,desde){let d=desde&&desde>hoy()?desde:hoy();for(let i=0;i<90;i++){if(esDiaDesp(d)&&carga(d,excluir)<DB.cfg.cupo)return d;d=sumar(d,1)}return hoy()}
+function hintFecha(s,excluir){if(!s)return'';const n=carga(s,excluir),c=DB.cfg.cupo;
+ if(s<hoy())return`<div class="hint w">⚠ Fecha pasada</div>`;
+ if(!esDiaDesp(s))return`<div class="hint w">⚠ ${DIAS[parse(s).getDay()]} no es día de despacho</div>`;
+ if(n>=c)return`<div class="hint w">⚠ Día lleno (${n}/${c} entregas)</div>`;
+ return`<div class="hint g">✓ Disponible (${n}/${c} entregas ese día)</div>`}
+
+/* ========= NAVEGACIÓN Y HOJAS ========= */
+function ir(t){S.tab=t;render();scrollTo(0,0)}
+function openSheet(h){$('#sheetBody').innerHTML=h;$('#sheet').classList.add('on');$('#sheetBody').scrollTop=0;if(!sheetOpen){sheetOpen=true;try{history.pushState({s:1},'')}catch(e){}}}
+function preguntar(msg,ok,txt,peligro,volver){openSheet(`<h3>${msg}</h3><button class="btn ${peligro?'bad':''}" id="qOk">${txt||'Sí, continuar'}</button><button class="btn sec" id="qNo">Cancelar</button>`);$('#qOk').onclick=ok;$('#qNo').onclick=volver||closeSheet}
+let ignorarPop=0;
+function closeSheet(){if(!sheetOpen)return;sheetOpen=false;$('#sheet').classList.remove('on');try{ignorarPop++;history.back()}catch(e){ignorarPop=0}}
+window.addEventListener('popstate',()=>{if(ignorarPop){ignorarPop--;return}if(sheetOpen){sheetOpen=false;$('#sheet').classList.remove('on')}});
+function render(){
+ $('#hoyTxt').textContent='Hoy: '+fmt(hoy());
+ document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
+ $('#fab').style.display=S.tab==='ajustes'?'none':'flex';
+ $('#main').innerHTML=S.tab==='inicio'?vInicio():S.tab==='cal'?vCal():vAjustes();
+ if(S.tab==='inicio')pintarLista();
+}
+
+/* ========= INICIO ========= */
+function vInicio(){
+ const act=DB.ordenes.filter(o=>!o.despachada),t=hoy();
+ const n=e=>act.filter(o=>est(o)===e).length;
+ const k=(f,v,l,red)=>`<div class="kpi ${S.filtro===f?'on':''} ${red&&v?'red':''}" onclick="setF('${f}')"><b>${v}</b><span>${l}</span></div>`;
+ const ch=(f,l)=>`<button class="chip ${S.filtro===f?'on':''}" onclick="setF('${f}')">${l}</button>`;
+ return`<div class="kpis">${k('pt',n('pt'),'Sin fecha')}${k('ag',n('ag'),'Agendadas')}${k('venc',n('venc'),'Vencidas',1)}${k('hoy',act.filter(o=>o.fechaEntrega===t).length,'Para hoy')}</div>
+ <input class="search" placeholder="🔍 Buscar OT, nota, cliente, producto" value="${esc(S.q)}" oninput="S.q=this.value;pintarLista()">
+ <div class="chips">${ch('activas','Activas')}${ch('pt','Sin fecha')}${ch('ag','Agendadas')}${ch('venc','Vencidas')}${ch('desp','Despachadas')}${ch('todas','Todas')}</div>
+ <select onchange="S.vend=this.value;pintarLista()" style="margin-bottom:12px"><option value="">Todos los vendedores</option>${DB.cfg.vendedores.map(v=>`<option ${S.vend===v?'selected':''}>${esc(v)}</option>`).join('')}</select>
+ <div id="lista"></div>`}
+function setF(f){S.filtro=f;render()}
+function pintarLista(){
+ const t=hoy(),q=S.q.trim().toLowerCase();
+ let L=DB.ordenes.filter(o=>{const e=est(o);
+  if(S.filtro==='activas'&&e==='desp')return false;
+  if(['pt','ag','venc','desp'].includes(S.filtro)&&e!==S.filtro)return false;
+  if(S.filtro==='hoy'&&(o.despachada||o.fechaEntrega!==t))return false;
+  if(S.vend&&o.vendedor!==S.vend)return false;
+  if(q&&![o.ot,o.nota,o.cliente,o.producto,...(o.items||[]).map(i=>i.desc)].join(' ').toLowerCase().includes(q))return false;
+  return true});
+ const rk={venc:0,ag:1,pt:2,desp:3};
+ L.sort((a,b)=>{const ea=est(a),eb=est(b);if(rk[ea]!==rk[eb])return rk[ea]-rk[eb];
+  if(ea==='desp')return(b.fechaDespacho||'').localeCompare(a.fechaDespacho||'');
+  if(ea==='pt'){if(!!a.urgente!==!!b.urgente)return a.urgente?-1:1;return(a.fechaPT||'').localeCompare(b.fechaPT||'')}
+  return a.fechaEntrega.localeCompare(b.fechaEntrega)});
+ $('#lista').innerHTML=L.length?L.map(card).join(''):`<div class="empty">${DB.ordenes.length?'No hay órdenes con este filtro':'Aún no tienes órdenes.<br>Toca <b>+</b> para agregar la primera.'}</div>`}
+function card(o){const e=est(o),t=hoy();let f;
+ if(e==='desp')f='✅ Despachada '+fmt(o.fechaDespacho);
+ else if(e==='venc')f='⏰ Vencida hace '+diasEntre(o.fechaEntrega,t)+' d';
+ else if(e==='ag')f=o.fechaEntrega===t?'🚚 Entrega HOY':'🚚 '+fmt(o.fechaEntrega)+' (en '+diasEntre(t,o.fechaEntrega)+' d)';
+ else f='📦 En PT hace '+(o.fechaPT?diasEntre(o.fechaPT,t):0)+' d';
+ return`<div class="card st-${e}" onclick="ver('${o.id}')">
+ <div class="row"><b class="ot">OT ${esc(o.ot)}</b>${o.urgente&&e!=='desp'?'<span class="pill bad">Urgente</span>':''}<span class="pill ${e}">${LBL[e]}</span></div>
+ <div class="cli">${esc(o.cliente)}</div><div class="prod">${esc(o.producto)}${o.cant?' · Cant: '+esc(o.cant):''}${o.nota?' · NE '+esc(o.nota):''}</div>
+ <div class="row mut sm"><span>👤 ${esc(o.vendedor||'—')}</span><span>${f}</span></div>${o.notas?.length||o.items?.length||o.adj?`<div class="sm mut" style="margin-top:4px">${o.items?.length?(()=>{const p=progreso(o);return`📋 ${p.listos}/${p.tot} ítems · `})():''}${o.adj?'📎 Nota · ':''}${o.notas?.length?'💬 '+o.notas.length+' nota(s)':''}</div>`:''}</div>`}
+
+/* ========= FORMULARIO ========= */
+let FORM={adj:null,items:[]};
+function abrirForm(id,diaPre,pre){const o=id?byId(id):Object.assign({fechaPT:hoy(),fechaEntrega:diaPre||'',vendedor:DB.cfg.vendedores[0]||''},pre||{});
+ FORM={adj:o.adj?{...o.adj}:null,items:(o.items||[]).map(i=>({...i,inc:true}))};
+ const vs=DB.cfg.vendedores.map(v=>`<button type="button" class="chip ${o.vendedor===v?'on':''}" onclick="selV(this)">${esc(v)}</button>`).join('');
+ openSheet(`<h3>${id?'Editar orden':'Nueva orden en PT'}</h3>
+ <div class="grid2"><div><label>N° OT *</label><input id="fOt" value="${esc(o.ot)}" inputmode="numeric"></div><div><label>Nota de entrega</label><input id="fNota" value="${esc(o.nota)}"></div></div>
+ <label>📎 Nota de entrega (PDF o foto)</label><div id="fAdj"></div>
+ <input type="file" id="fFile" accept="application/pdf,image/*" style="display:none" onchange="alSubir(this.files[0]);this.value=''">
+ <label>Cliente *</label><input id="fCli" value="${esc(o.cliente)}">
+ <label>Ítems de esta OT <span class="mut">(desmarca lo que no va en esta OT)</span></label><div id="fItems"></div>
+ <button type="button" class="chip" onclick="syncItems();FORM.items.push({id:uid(),cant:1,desc:'',inc:true});pintarItems(1)">➕ Agregar ítem a mano</button>
+ <label>Resumen / producto ${'<span class="mut">(si lo dejas vacío uso el primer ítem)</span>'}</label><input id="fProd" value="${esc(o.producto)}" placeholder="Ej: Tablero NLAB 6 circuitos">
+ <input type="hidden" id="fCant" value="${esc(o.cant)}">
+ <label>Llegó a PT</label><input type="date" id="fPT" value="${o.fechaPT||hoy()}">
+ <label>Vendedor</label><div class="radio" id="fVend">${vs}</div>
+ <label>Fecha de entrega (opcional)</label>
+ <div class="grid2"><input type="date" id="fFE" value="${o.fechaEntrega||''}" oninput="$('#fHint').innerHTML=hintFecha(this.value,'${id||''}')"><button type="button" class="btn sec" style="margin:0" onclick="const s=sugerir('${id||''}');$('#fFE').value=s;$('#fHint').innerHTML=hintFecha(s,'${id||''}')">✨ Sugerir</button></div>
+ <div id="fHint">${hintFecha(o.fechaEntrega,id)}</div>
+ <label style="display:flex;align-items:center;gap:8px;color:var(--tx)"><input type="checkbox" id="fUrg" style="width:auto" ${o.urgente?'checked':''}> Urgente</label>
+ ${id?'':'<label>Nota inicial</label><textarea id="fNotaIni" rows="2" placeholder="Ej: cliente retira en sitio"></textarea>'}
+ <button class="btn" onclick="guardar('${id||''}')">💾 Guardar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`);
+ pintarAdj();pintarItems()}
+function nuevoVend(b){const v=FORM.vendNota;if(!DB.cfg.vendedores.includes(v)){DB.cfg.vendedores.push(v);save()}b.textContent=v;b.setAttribute('onclick','selV(this)');selV(b);toast(v+' agregado a tus vendedores')}
+function selV(b){b.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
+function pintarAdj(msg){const a=FORM.adj;$('#fAdj').innerHTML=msg?`<div class="load">${msg}</div>`:
+ `<div class="adj"><span>${a?(a.type==='application/pdf'?'📄 ':'🖼️ ')+esc(a.name):'<span class="mut">Sin nota adjunta</span>'}</span><button type="button" class="chip on" onclick="$('#fFile').click()">${a?'Cambiar':'Subir'}</button></div>`}
+function pintarItems(foco){const el=$('#fItems');if(!el)return;
+ el.innerHTML=FORM.items.length?FORM.items.map((i,k)=>`<div class="irow ${i.inc?'':'off'}"><input type="checkbox" ${i.inc?'checked':''} onchange="syncItems();pintarItems()" title="Incluir en esta OT">
+ <input value="${esc(i.cant)}" inputmode="decimal" placeholder="Cant"><textarea rows="2" placeholder="Descripción del ítem">${esc(i.desc)}</textarea><button type="button" onclick="syncItems();FORM.items.splice(${k},1);pintarItems()">✕</button></div>`).join('')
+ :'<div class="mut sm" style="padding:4px 0 8px">Sube la nota y extraigo los ítems, o agrégalos a mano.</div>';
+ if(foco){const ins=el.querySelectorAll('.irow textarea');ins[ins.length-1]?.focus()}}
+function syncItems(){document.querySelectorAll('#fItems .irow').forEach((r,k)=>{const ins=r.querySelectorAll('input');Object.assign(FORM.items[k],{inc:ins[0].checked,cant:toNum(ins[1].value)||ins[1].value.trim(),desc:r.querySelector('textarea').value.trim()})})}
+async function alSubir(f){if(!f)return;syncItems();FORM.adj={id:uid(),name:f.name,type:f.type||'',file:f};
+ if(!/pdf/i.test(f.type)&&!/\.pdf$/i.test(f.name)){FORM.adj.type=f.type||'image/jpeg';pintarAdj();return toast('Foto adjunta. Agrega los ítems a mano.')}
+ FORM.adj.type='application/pdf';pintarAdj('⏳ Leyendo la nota…');
+ try{const lines=await leerPDF(await f.arrayBuffer()),it=extraerItems(lines),d=extraerDatos(lines);
+  if(d.nota&&!$('#fNota').value)$('#fNota').value=d.nota;if(d.cliente&&!$('#fCli').value)$('#fCli').value=d.cliente;
+  if(d.vendedor){const v=vendedorDe(d.vendedor);if(v)document.querySelectorAll('#fVend .chip').forEach(b=>b.classList.toggle('on',b.textContent===v));
+   else{FORM.vendNota=d.vendedor;$('#fVend').insertAdjacentHTML('beforeend',`<button type="button" class="chip" onclick="nuevoVend(this)">➕ ${esc(d.vendedor)} (de la nota)</button>`)}}
+  FORM.items=FORM.items.filter(i=>i.desc).concat(it.map(i=>({id:uid(),...i,inc:true})));pintarAdj();pintarItems();
+  toast(it.length?`Encontré ${it.length} ítem(s). Revisa y desmarca los que no van.`:'No encontré ítems (¿es escaneada?). Agrégalos a mano.')}
+ catch(e){console.error(e);pintarAdj();toast('No pude leer el PDF. Quedó adjunto; agrega los ítems a mano.')}}
+async function guardar(id){syncItems();
+ const g=s=>$(s).value.trim(),ot=g('#fOt'),cli=g('#fCli');
+ const inc=FORM.items.filter(i=>i.inc&&i.desc),resto=FORM.items.filter(i=>!i.inc&&i.desc);
+ const prod=g('#fProd')||(inc[0]?inc[0].desc+(inc.length>1?` (+${inc.length-1} ítems)`:''):'');
+ if(!ot||!cli||!prod)return toast('Completa OT, cliente y al menos un ítem o el producto');
+ if(DB.ordenes.some(x=>x.ot===ot&&x.id!==id&&!x.despachada))return toast('Ya existe una OT activa con ese número');
+ const v=$('#fVend .chip.on'),fe=g('#fFE');
+ let o=id?byId(id):{id:uid(),notas:[],creada:ahora(),reprog:0};
+ if(FORM.adj&&FORM.adj.file){try{await IDB.put(FORM.adj.id,{name:FORM.adj.name,type:FORM.adj.type,blob:FORM.adj.file})}catch(e){toast('⚠ No se pudo guardar el adjunto')}
+  const viejo=o.adj&&o.adj.id;delete FORM.adj.file;if(viejo&&viejo!==FORM.adj.id)setTimeout(()=>limpiarAdj(viejo),0)}
+ if(id&&o.fechaEntrega&&fe&&fe!==o.fechaEntrega){o.reprog=(o.reprog||0)+1;o.notas.push({t:ahora(),a:'Sistema',txt:`Reprogramada de ${fmt(o.fechaEntrega)} a ${fmt(fe)}`})}
+ Object.assign(o,{ot,nota:g('#fNota'),cliente:cli,producto:prod,cant:g('#fCant'),fechaPT:g('#fPT')||hoy(),vendedor:v?v.textContent:'',fechaEntrega:fe,urgente:$('#fUrg').checked,
+  adj:FORM.adj||null,items:inc.map(i=>({id:i.id||uid(),cant:i.cant,desc:i.desc,ok:!!i.ok,d:i.d||''}))});
+ if(!id){const ni=$('#fNotaIni')?.value.trim();if(ni)o.notas.push({t:ahora(),a:'Yo',txt:ni});DB.ordenes.push(o)}
+ save();render();
+ if(resto.length){openSheet(`<h3>Quedaron ${resto.length} ítem(s) de la nota sin OT</h3><div class="box">${resto.map(i=>`<div class="kv"><span>${esc(i.cant)}</span><b>${esc(i.desc)}</b></div>`).join('')}</div>
+  <div class="mut sm">Si otra parte de esta nota se fabrica en otra OT, créala ahora con estos ítems y la misma nota adjunta.</div>
+  <button class="btn" onclick='otraOT(${JSON.stringify(o.id)},${esc(JSON.stringify(resto.map(i=>({cant:i.cant,desc:i.desc}))))})'>➕ Crear otra OT con ellos</button><button class="btn sec" onclick="closeSheet()">No, está bien así</button>`);
+  toast(id?'Orden actualizada':'Orden agregada');return}
+ closeSheet();toast(id?'Orden actualizada':'Orden agregada')}
+function otraOT(oid,items){const o=byId(oid);abrirForm(null,'',{nota:o.nota,cliente:o.cliente,vendedor:o.vendedor,fechaPT:o.fechaPT,adj:o.adj,items:items.map(i=>({id:uid(),...i}))})}
+async function limpiarAdj(aid){if(!aid||DB.ordenes.some(o=>o.adj&&o.adj.id===aid))return;try{await IDB.del(aid)}catch(e){}}
+
+/* ========= DETALLE ========= */
+function ver(id){const o=byId(id),e=est(o),t=hoy();
+ const kv=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+ const autores=['Yo',...DB.cfg.vendedores].map(a=>`<option>${esc(a)}</option>`).join('');
+ const notas=(o.notas||[]).slice().reverse().map(n=>`<div class="nota"><small>${esc(n.a)} · ${new Date(n.t).toLocaleString('es',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</small>${esc(n.txt)}</div>`).join('')||'<div class="mut sm">Sin notas todavía.</div>';
+ openSheet(`<div class="row"><h3 style="margin:0">OT ${esc(o.ot)}</h3><span class="pill ${e}">${LBL[e]}</span></div>
+ <div class="box" style="margin-top:12px">${kv('Cliente',esc(o.cliente))}${kv('Producto',esc(o.producto))}${o.cant?kv('Cantidad',esc(o.cant)):''}${kv('Nota de entrega',esc(o.nota||'—'))}${kv('Vendedor',esc(o.vendedor||'—'))}
+ ${kv('Llegó a PT',fmt(o.fechaPT)+(o.fechaPT?` (${diasEntre(o.fechaPT,o.fechaDespacho||t)} d)`:''))}${kv('Entrega programada',fmt(o.fechaEntrega))}${o.despachada?kv('Despachada',fmt(o.fechaDespacho)):''}${o.reprog?kv('Reprogramaciones',o.reprog):''}</div>
+ ${o.despachada?`<button class="btn sec" onclick="deshacer('${id}')">↩ Deshacer despacho</button>`:`
+ <div class="grid2"><button class="btn" onclick="agendar('${id}')">📅 ${o.fechaEntrega?'Reprogramar':'Agendar'}</button><button class="btn ok" onclick="despachar('${id}')">✅ Despachar</button></div>`}
+ <div class="grid2"><button class="btn sec" onclick="abrirForm('${id}')">✏️ Editar</button><button class="btn sec" onclick="copiar(msjVend('${id}'))">📋 Mensaje</button></div>
+ ${o.adj?`<button class="btn sec" onclick="verAdj('${id}')">${o.adj.type==='application/pdf'?'📄':'🖼️'} Ver nota adjunta</button>`:`<button class="btn sec" onclick="abrirForm('${id}')">📎 Adjuntar nota de entrega</button>`}
+ ${checklist(o)}
+ <h3 style="margin-top:20px">💬 Notas con vendedores</h3>
+ <div class="grid2" style="grid-template-columns:1fr 2fr"><select id="nAut">${autores}</select><input id="nTxt" placeholder="Escribe una nota…"></div>
+ <button class="btn sec" onclick="addNota('${id}')">Agregar nota</button>${notas}
+ <button class="btn bad" style="margin-top:20px" onclick="borrar('${id}')">🗑 Eliminar orden</button>`)}
+function progreso(o){const it=o.items||[];return{tot:it.length,listos:it.filter(i=>i.ok||i.d).length,desp:it.filter(i=>i.d).length}}
+function checklist(o){const it=o.items||[];if(!it.length)return'';const p=progreso(o),pend=it.some(i=>!i.d);
+ return`<h3 style="margin-top:20px" class="row">📋 Ítems a despachar <span class="pill ${p.listos===p.tot?'desp':'ag'}" id="chkN">${p.listos}/${p.tot}</span></h3>
+ <div class="bar"><i id="chkBar" style="width:${p.tot?p.listos/p.tot*100:0}%"></i></div>
+ ${it.map(i=>`<label class="chk ${i.d?'done on':i.ok?'on':''}"><input type="checkbox" ${i.ok||i.d?'checked':''} ${i.d||o.despachada?'disabled':''} onchange="tildar('${o.id}','${i.id}',this)">
+ <b>${esc(i.cant)}</b><div>${esc(i.desc)}${i.d?`<small>✓ Despachado ${fmt(i.d)}</small>`:''}</div></label>`).join('')}
+ ${pend&&!o.despachada?`<div class="grid2"><button class="btn sec" onclick="tildarTodos('${o.id}',true)">☑ Tildar todos</button><button class="btn sec" onclick="tildarTodos('${o.id}',false)">☐ Destildar</button></div>`:''}`}
+function tildar(oid,iid,el){const o=byId(oid),i=o.items.find(x=>x.id===iid);i.ok=el.checked;el.closest('.chk').classList.toggle('on',el.checked);save();
+ const p=progreso(o),n=$('#chkN');n.textContent=p.listos+'/'+p.tot;n.className='pill '+(p.listos===p.tot?'desp':'ag');$('#chkBar').style.width=(p.listos/p.tot*100)+'%';render();if(p.listos===p.tot)toast('✓ Todo verificado, listo para despachar')}
+function tildarTodos(oid,v){const o=byId(oid),y=$('#sheetBody').scrollTop;o.items.forEach(i=>{if(!i.d)i.ok=v});save();ver(oid);$('#sheetBody').scrollTop=y;render()}
+async function verAdj(id){const o=byId(id);openSheet(`<div class="row"><h3 style="margin:0">Nota de OT ${esc(o.ot)}</h3><button class="chip" onclick="ver('${id}')">Volver</button></div><div class="mut sm" style="margin:6px 0 10px">${esc(o.adj.name)}</div><div id="adjV"><div class="load">⏳ Cargando…</div></div>`);
+ let r;try{r=await IDB.get(o.adj.id)}catch(e){}
+ const v=$('#adjV');if(!v)return;if(!r){v.innerHTML='<div class="empty">El archivo no está guardado en este teléfono.</div>';return}
+ if(r.type!=='application/pdf'){v.innerHTML=`<img class="pdfpg" src="${URL.createObjectURL(r.blob)}">`;return}
+ try{const lib=await pdfjs(),doc=await lib.getDocument({data:await r.blob.arrayBuffer()}).promise;v.innerHTML='';
+  for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p),w=v.clientWidth||340,vp0=pg.getViewport({scale:1}),sc=w/vp0.width*(window.devicePixelRatio||1),vp=pg.getViewport({scale:sc});
+   const c=document.createElement('canvas');c.className='pdfpg';c.width=vp.width;c.height=vp.height;v.appendChild(c);await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise}}
+ catch(e){console.error(e);v.innerHTML='<div class="empty">No se pudo mostrar el PDF.</div>'}}
+function addNota(id){const t=$('#nTxt').value.trim();if(!t)return toast('Escribe la nota');const o=byId(id);o.notas=o.notas||[];o.notas.push({t:ahora(),a:$('#nAut').value,txt:t});save();ver(id);render();toast('Nota guardada')}
+function agendar(id){const o=byId(id),s=o.fechaEntrega&&o.fechaEntrega>=hoy()?o.fechaEntrega:sugerir(id);
+ openSheet(`<h3>${o.fechaEntrega?'Reprogramar':'Agendar'} OT ${esc(o.ot)}</h3>
+ <label>Fecha de entrega</label><input type="date" id="aF" value="${s}" oninput="$('#aH').innerHTML=hintFecha(this.value,'${id}')"><div id="aH">${hintFecha(s,id)}</div>
+ <div class="chips">${proximos(id).map(d=>`<button class="chip" onclick="$('#aF').value='${d}';$('#aH').innerHTML=hintFecha('${d}','${id}')">${fmt(d)} · ${carga(d,id)}/${DB.cfg.cupo}</button>`).join('')}</div>
+ ${o.fechaEntrega?'<label>Motivo del cambio (ayuda a mejorar)</label><input id="aM" placeholder="Ej: cliente no tiene espacio, falta transporte…">':''}
+ <button class="btn" onclick="confAgendar('${id}')">Confirmar fecha</button>${o.fechaEntrega?`<button class="btn sec" onclick="quitarFecha('${id}')">Quitar fecha</button>`:''}<button class="btn sec" onclick="ver('${id}')">Volver</button>`)}
+function proximos(id){const r=[];let d=hoy();for(let i=0;i<45&&r.length<6;i++){if(esDiaDesp(d)&&carga(d,id)<DB.cfg.cupo)r.push(d);d=sumar(d,1)}return r}
+function confAgendar(id){const o=byId(id),f=$('#aF').value;if(!f)return toast('Elige una fecha');
+ if(o.fechaEntrega&&o.fechaEntrega!==f){o.reprog=(o.reprog||0)+1;const m=$('#aM')?.value.trim();o.notas.push({t:ahora(),a:'Sistema',txt:`Reprogramada de ${fmt(o.fechaEntrega)} a ${fmt(f)}${m?' — Motivo: '+m:''}`})}
+ else if(!o.fechaEntrega)o.notas.push({t:ahora(),a:'Sistema',txt:'Agendada para '+fmt(f)});
+ o.fechaEntrega=f;save();ver(id);render();toast('Entrega agendada')}
+function quitarFecha(id){const o=byId(id);o.notas.push({t:ahora(),a:'Sistema',txt:'Se quitó la fecha '+fmt(o.fechaEntrega)});o.fechaEntrega='';save();ver(id);render()}
+function despachar(id){const o=byId(id),pend=(o.items||[]).filter(i=>!i.d);
+ if(pend.length){const sel=pend.filter(i=>i.ok);
+  if(!sel.length)return toast('Tilda los ítems que estás despachando');
+  if(sel.length<pend.length){const falt=pend.filter(i=>!i.ok);
+   return openSheet(`<h3>⚠ Despacho parcial</h3><div class="mut sm">Vas a despachar ${sel.length} de ${pend.length} ítems. Quedan pendientes:</div>
+   <div class="box" style="margin-top:8px">${falt.map(i=>`<div class="kv"><span>${esc(i.cant)}</span><b>${esc(i.desc)}</b></div>`).join('')}</div>
+   <label>Motivo (ayuda a mejorar) *</label><input id="pM" placeholder="Ej: falta un componente, no cupo en el camión…">
+   <button class="btn" onclick="parcial('${id}')">🚚 Despachar parcial y reagendar lo que falta</button><button class="btn sec" onclick="ver('${id}')">Volver y revisar</button>`)}}
+ preguntar('¿Marcar OT '+esc(o.ot)+' como despachada hoy?',()=>despacharTodo(id),'✅ Sí, despachada',0,()=>ver(id))}
+function despacharTodo(id){const o=byId(id);
+ (o.items||[]).forEach(i=>{if(!i.d){i.d=hoy();i.ok=true}});
+ o.despachada=true;o.fechaDespacho=hoy();if(!o.fechaEntrega)o.fechaEntrega=hoy();
+ o.notas.push({t:ahora(),a:'Sistema',txt:'Despachada'+(o.fechaDespacho>o.fechaEntrega?` con ${diasEntre(o.fechaEntrega,o.fechaDespacho)} d de retraso`:' a tiempo')});
+ save();closeSheet();render();toast('✅ Despachada')}
+function parcial(id){const o=byId(id),m=$('#pM').value.trim();if(!m)return toast('Escribe el motivo');
+ const sel=o.items.filter(i=>!i.d&&i.ok),falt=o.items.filter(i=>!i.d&&!i.ok);sel.forEach(i=>i.d=hoy());o.parciales=(o.parciales||0)+1;
+ o.notas.push({t:ahora(),a:'Sistema',txt:`Despacho parcial (${sel.length} ítems). Pendiente: ${falt.map(i=>i.cant+' '+i.desc).join('; ')} — Motivo: ${m}`});
+ save();render();toast('Parcial registrado. Agenda lo pendiente');agendar(id)}
+function deshacer(id){const o=byId(id);o.despachada=false;o.fechaDespacho='';const u=o.items?.reduce((m,i)=>i.d>m?i.d:m,'');(o.items||[]).forEach(i=>{if(i.d===u)i.d=''});o.notas.push({t:ahora(),a:'Sistema',txt:'Despacho deshecho'});save();ver(id);render()}
+function borrar(id){preguntar('¿Eliminar la OT '+esc(byId(id).ot)+'? No se puede deshacer.',()=>borrarYa(id),'🗑 Sí, eliminar',1,()=>ver(id))}
+function borrarYa(id){const aid=byId(id).adj?.id;DB.ordenes=DB.ordenes.filter(o=>o.id!==id);save();limpiarAdj(aid);closeSheet();render();toast('Orden eliminada')}
+function msjVend(id){const o=byId(id);return`Hola ${o.vendedor||''}, la OT ${o.ot}${o.nota?' (NE '+o.nota+')':''} de ${o.cliente} — ${o.producto}${o.cant?' x'+o.cant:''} está en producto terminado.`+(o.items?.length?'\nÍtems:\n'+o.items.map(i=>'• '+i.cant+' '+i.desc+(i.d?' (despachado)':'')).join('\n')+'\n':' ')+(o.fechaEntrega?`Entrega programada: ${fmt(o.fechaEntrega)}.`:'Indícame qué día la entregamos.')}
+function copiar(txt){const fb=()=>openSheet(`<h3>Copia este texto</h3><textarea rows="10" onfocus="this.select()">${esc(txt)}</textarea><button class="btn sec" onclick="closeSheet()">Cerrar</button>`);
+ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(()=>toast('📋 Copiado')).catch(fb);else fb()}
+
+/* ========= CALENDARIO ========= */
+function vCal(){if(!S.mes){const d=new Date();S.mes=[d.getFullYear(),d.getMonth()]}if(!S.dia)S.dia=hoy();
+ const[y,m]=S.mes,first=new Date(y,m,1),off=(first.getDay()+6)%7,n=new Date(y,m+1,0).getDate(),t=hoy();
+ let c=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div class="h">${d}</div>`).join('')+'<div></div>'.repeat(off);
+ for(let i=1;i<=n;i++){const s=iso(new Date(y,m,i)),k=carga(s),cl=[!esDiaDesp(s)?'off':'',k>=DB.cfg.cupo?'full':k?'some':'',s===t?'today':'',s===S.dia?'sel':''].join(' ');
+  c+=`<div class="day ${cl}" onclick="S.dia='${s}';render()">${i}${k?`<em>${k}/${DB.cfg.cupo}</em>`:''}</div>`}
+ const L=DB.ordenes.filter(o=>o.fechaEntrega===S.dia||o.fechaDespacho===S.dia),k=carga(S.dia),sin=DB.ordenes.filter(o=>est(o)==='pt').length;
+ return`<div class="calhead"><button onclick="mes(-1)">‹</button><b style="text-transform:capitalize">${MESES[m]} ${y}</b><button onclick="mes(1)">›</button></div>
+ <div class="cal">${c}</div>
+ <div class="leg"><span><i style="background:var(--ag2)"></i>Con entregas</span><span><i style="background:var(--bad2)"></i>Lleno</span><span><i style="background:var(--card);opacity:.4"></i>No despacha</span></div>
+ <div class="row" style="margin:14px 0 8px"><b>${fmt(S.dia)}</b><span class="mut sm">${esDiaDesp(S.dia)?k+'/'+DB.cfg.cupo+' cupos usados':'No es día de despacho'}</span></div>
+ ${L.map(card).join('')||'<div class="empty" style="padding:16px">Sin entregas este día</div>'}
+ ${esDiaDesp(S.dia)&&k<DB.cfg.cupo&&S.dia>=t&&sin?`<button class="btn sec" onclick="asignarDia()">➕ Asignar una orden sin fecha (${sin})</button>`:''}`}
+function mes(d){let[y,m]=S.mes;m+=d;if(m<0){m=11;y--}if(m>11){m=0;y++}S.mes=[y,m];render()}
+function asignarDia(){const L=DB.ordenes.filter(o=>est(o)==='pt');
+ openSheet(`<h3>Asignar al ${fmt(S.dia)}</h3>${L.map(o=>`<div class="card" onclick="asignar('${o.id}')"><b>OT ${esc(o.ot)}</b> · ${esc(o.cliente)}<div class="prod">${esc(o.producto)} · 👤 ${esc(o.vendedor||'—')}</div></div>`).join('')}<button class="btn sec" onclick="closeSheet()">Cancelar</button>`)}
+function asignar(id){const o=byId(id);o.fechaEntrega=S.dia;o.notas.push({t:ahora(),a:'Sistema',txt:'Agendada para '+fmt(S.dia)});save();closeSheet();render();toast('Asignada al '+fmt(S.dia))}
+
+/* ========= AJUSTES E INDICADORES ========= */
+function vAjustes(){const c=DB.cfg;
+ const D=DB.ordenes.filter(o=>o.despachada&&o.fechaEntrega&&o.fechaDespacho);
+ const at=D.filter(o=>o.fechaDespacho<=o.fechaEntrega).length,pct=D.length?Math.round(at/D.length*100):0;
+ const conPT=D.filter(o=>o.fechaPT),prom=conPT.length?(conPT.reduce((s,o)=>s+diasEntre(o.fechaPT,o.fechaDespacho),0)/conPT.length).toFixed(1):'—';
+ const rep=DB.ordenes.reduce((s,o)=>s+(o.reprog||0),0);
+ const filas=c.vendedores.map(v=>{const d=D.filter(o=>o.vendedor===v),a=d.filter(o=>o.fechaDespacho<=o.fechaEntrega).length,r=DB.ordenes.filter(o=>o.vendedor===v).reduce((s,o)=>s+(o.reprog||0),0),p=DB.ordenes.filter(o=>o.vendedor===v&&!o.despachada).length;
+  return`<tr><td>${esc(v)}</td><td>${p}</td><td>${d.length}</td><td>${d.length?Math.round(a/d.length*100)+'%':'—'}</td><td>${r}</td></tr>`}).join('');
+ return`<div class="box"><h3 style="margin-top:0">📈 Mejora continua</h3>
+ <div class="grid2"><div><div class="big" style="color:${pct>=90?'var(--ok)':pct>=70?'var(--ag)':'var(--bad)'}">${D.length?pct+'%':'—'}</div><div class="mut sm">Entregas a tiempo (${at}/${D.length})</div></div>
+ <div><div class="big">${prom}</div><div class="mut sm">Días promedio de PT a despacho</div></div></div>
+ <div class="kv" style="margin-top:8px"><span>Reprogramaciones totales</span><b>${rep}</b></div><div class="kv"><span>Despachos parciales</span><b>${DB.ordenes.reduce((s,o)=>s+(o.parciales||0),0)}</b></div>
+ <table style="margin-top:8px"><tr><th>Vendedor</th><th>Activas</th><th>Desp.</th><th>A tiempo</th><th>Reprog.</th></tr>${filas}</table>
+ <div class="mut sm" style="margin-top:8px">Meta sugerida: 90% a tiempo. Revisa los motivos de reprogramación en las notas para atacar la causa más repetida.</div></div>
+ <div class="box"><h3 style="margin-top:0">👥 Vendedores</h3>${c.vendedores.map((v,i)=>`<div class="vrow"><input value="${esc(v)}" onchange="renV(${i},this.value)"><button onclick="delV(${i})">✕</button></div>`).join('')}
+ <button class="btn sec" onclick="addV()">➕ Agregar vendedor</button></div>
+ <div class="box"><h3 style="margin-top:0">🚚 Días de despacho</h3><div class="radio">${[1,2,3,4,5,6,0].map(d=>`<button class="chip ${c.dias.includes(d)?'on':''}" onclick="togD(${d})">${DIAS[d]}</button>`).join('')}</div>
+ <label>Máximo de entregas por día</label><div class="grid2" style="grid-template-columns:50px 1fr 50px"><button class="btn sec" style="margin:0" onclick="cupo(-1)">−</button><div class="big" style="text-align:center">${c.cupo}</div><button class="btn sec" style="margin:0" onclick="cupo(1)">+</button></div></div>
+ <div class="box"><h3 style="margin-top:0">💾 Respaldo</h3><div class="mut sm">Los datos se guardan solo en este teléfono. Haz un respaldo de vez en cuando y guárdalo en WhatsApp o Drive. (El respaldo incluye órdenes, ítems y notas; los PDF adjuntos se quedan en el teléfono.)</div>
+ <button class="btn sec" onclick="copiar(JSON.stringify(DB))">📋 Copiar respaldo</button><button class="btn sec" onclick="restaurar()">♻️ Restaurar respaldo</button><button class="btn sec" onclick="copiar(csv())">📊 Copiar tabla para Excel</button></div>
+ <div class="mut sm" style="text-align:center">Entregas PT v1.2 · ${DB.ordenes.length} órdenes registradas</div>`}
+function renV(i,v){v=v.trim();if(!v)return render();const old=DB.cfg.vendedores[i];DB.cfg.vendedores[i]=v;DB.ordenes.forEach(o=>{if(o.vendedor===old)o.vendedor=v});save();toast('Vendedor actualizado')}
+function delV(i){preguntar('¿Quitar a '+esc(DB.cfg.vendedores[i])+'? Sus órdenes se conservan.',()=>{DB.cfg.vendedores.splice(i,1);save();closeSheet();render()},'Quitar',1)}
+function addV(){openSheet(`<h3>Nuevo vendedor</h3><label for="vN">Nombre (como sale en las notas)</label><input id="vN" placeholder="Ej: ARNALDO RIVERO"><button class="btn" onclick="const v=$('#vN').value.trim();if(!v)return toast('Escribe el nombre');DB.cfg.vendedores.push(v);save();closeSheet();render()">Agregar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`);setTimeout(()=>$('#vN')?.focus(),50)}
+function togD(d){const a=DB.cfg.dias;a.includes(d)?a.splice(a.indexOf(d),1):a.push(d);if(!a.length){a.push(d);return toast('Debe haber al menos un día')}save();render()}
+function cupo(d){DB.cfg.cupo=Math.max(1,Math.min(50,DB.cfg.cupo+d));save();render()}
+function csv(){const h=['OT','Nota entrega','Cliente','Producto','Cantidad','Vendedor','Llegó a PT','Entrega programada','Despachada','Estado','Reprogramaciones','Ítems','Notas'];
+ const r=DB.ordenes.map(o=>[o.ot,o.nota,o.cliente,o.producto,o.cant,o.vendedor,o.fechaPT,o.fechaEntrega,o.fechaDespacho||'',LBL[est(o)],o.reprog||0,(o.items||[]).map(i=>i.cant+' '+i.desc+(i.d?' ✓':'')).join(' | '),(o.notas||[]).map(n=>n.a+': '+n.txt).join(' | ')]);
+ return[h,...r].map(x=>x.map(v=>String(v??'').replace(/\t|\n/g,' ')).join('\t')).join('\n')}
+function restaurar(){openSheet(`<h3>Restaurar respaldo</h3><div class="mut sm">Pega aquí el texto del respaldo. Reemplazará los datos actuales.</div><textarea id="rT" rows="8"></textarea><button class="btn" onclick="confRest()">Restaurar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`)}
+function confRest(){try{const d=JSON.parse($('#rT').value);if(!Array.isArray(d.ordenes)||!d.cfg)throw 0;preguntar('¿Reemplazar todos los datos actuales por el respaldo?',()=>{DB=d;save();closeSheet();render();toast('Respaldo restaurado')},'♻️ Sí, reemplazar',1)}catch(e){toast('Texto de respaldo no válido')}}
+
+render();
+</script>
+</body>
+</html>

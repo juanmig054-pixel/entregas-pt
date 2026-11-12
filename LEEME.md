@@ -1,5 +1,12 @@
 # Entregas PT
 
+## Novedades v2.5 — búsqueda, filtros, edición e historial
+- **Trello**: buscador dentro de la importación, filtro por lista y "solo nuevas", búsqueda 🌐 en todo el tablero (incluye "solicitudes"), etiquetas, vencimiento y PDF visibles. Extrae N° de OT, N° de nota (NE-AAAA-MM-NNN), cliente, tipo (etiqueta NLAB/NAB/Celda), urgente y plazo desde título, descripción, etiquetas y PDF. Si hay varios PDF, pregunta cuál es la nota. **Importar varias** a la vez (las incompletas quedan "Revisar").
+- **Órdenes**: búsqueda sin acentos y por varias palabras (OT, nota, cliente, ítems, notas, chofer, quien recibió, cédula). Panel **⚙ Filtros**: varios estados, vendedor, cliente, tipo, chofer, rango de fechas (entrega, despacho, entrega real, compromiso, creada), urgentes, parciales, sin foto/firma, de Trello, por revisar; y orden.
+- **Editar después**: envíos (hora de salida, chofer, vehículo) y entregas (quién recibió, cédula, hora, observaciones, fotos y firma). Fotos desde **cámara o galería** (hasta 6). Se puede registrar la entrega sin foto ni firma y agregarlas luego. **Fotos generales de la OT**. Editar o borrar notas. Todo queda en el historial.
+- **🕒 Historial** (en Órdenes): todos los movimientos por período, tipo y persona, con resumen (envíos, entregas, % a tiempo, parciales) y exportación a **Excel** (envíos e historial). Cada OT puede compartir su historial en texto.
+- Corregido: editar una OT con envíos parciales ya no pierde las cantidades enviadas; las fechas registradas de noche ya no saltan al día siguiente.
+
 ## Novedades v2.4 — entregas parciales y plazo automático
 - **Varios envíos por OT**: en cada envío eliges qué ítems y **qué cantidad** salen; lo demás queda pendiente. Cada envío tiene chofer, vehículo, prueba de entrega y comprobante propios (el comprobante lista lo entregado y lo pendiente).
 - La OT queda como **"Parcial"** hasta que sale todo; la pantalla Hoy muestra las **notas con entregas parciales**.

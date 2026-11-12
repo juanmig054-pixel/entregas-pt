@@ -273,7 +273,7 @@ async function crearPrimerSup(){const n=$('#lN').value.trim(),p=$('#lP').value.t
 async function entrar(){const u=NUBE.usuarios.find(x=>x.id===LOGIN.sel);const p=$('#lP').value.trim();if(!u)return;
  if(await hashPin(u.id,p)!==u.pin){$('#lP').value='';return toast('PIN incorrecto')}
  iniciarSesion({id:u.id,nombre:u.nombre,rol:u.rol})}
-function iniciarSesion(u){USR=u;guardarSesion(u);permisoAvisos();setTimeout(trelloRevisar,2000);$('#login').classList.remove('on');LOGIN.sel=null;S.tab='hoy';
+function iniciarSesion(u){USR=u;guardarSesion(u);setTimeout(revisarTrelloNube,500);permisoAvisos();setTimeout(trelloRevisar,2000);$('#login').classList.remove('on');LOGIN.sel=null;S.tab='hoy';
  if(NUBE.pendMigrar&&puede('crear'))ofrecerMigrar();render();toast('Hola, '+u.nombre)}
 function cerrarSesion(){preguntar('¿Cerrar sesión en este teléfono?',()=>{closeSheet();USR=null;guardarSesion(null);mostrarLogin()},'Cerrar sesión')}
 function vUsuarios(){return`<div class="box"><h3 style="margin-top:0">👥 Usuarios de la app</h3><div class="mut sm">Cada persona entra con su nombre y PIN. Los vendedores solo ven sus notas; despacho tilda y despacha.</div>
@@ -325,6 +325,7 @@ function escuchar(){const fs=NUBE.fs;
  fs.collection('usuarios').onSnapshot(s=>{NUBE.usuarios=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.nombre.localeCompare(b.nombre));if(!s.metadata.fromCache||s.size)NUBE.usrListo=true;
   if(USR){const u=NUBE.usuarios.find(x=>x.id===USR.id);if(NUBE.usrListo&&!s.metadata.fromCache&&!u){USR=null;guardarSesion(null);mostrarLogin();return}if(u&&(u.rol!==USR.rol||u.nombre!==USR.nombre)){USR={id:u.id,nombre:u.nombre,rol:u.rol};guardarSesion(USR);render()}}
   pintarLogin();if(S.tab==='ajustes'&&USR)render()},e=>{console.error(e);toast('⚠ Sin permiso en la nube: revisa las reglas de Firestore')});
+ escucharTrello();
  fs.doc('config/general').onSnapshot(d=>{if(d.exists){DB.cfg=Object.assign(defaults().cfg,d.data());NUBE.cfgLast=sj(DB.cfg);guardarLocal();if(USR)render()}});
  fs.collection('ordenes').onSnapshot({includeMetadataChanges:true},s=>{const cam=new Set();
   if(!NUBE.base){if(s.metadata.fromCache&&!s.size)return estadoNube(s.metadata);
@@ -363,11 +364,12 @@ async function bajarTrello(url,type){const auth=`OAuth oauth_consumer_key="${TR.
  const r=await fetch(url,{headers:{Authorization:auth}});if(!r.ok)throw new Error('No se pudo bajar el adjunto ('+r.status+')');return r.blob()}
 function vTrello(){return`<div class="box"><h3 style="margin-top:0">🔗 Trello</h3>
  ${TR.ok?`<div class="kv"><span>Tablero</span><b>${esc(TR.boardName||'')}</b></div><div class="kv"><span>Aprobadas</span><b>${esc(TR.aprName||'—')}</b></div><div class="kv"><span>En fabricación</span><b>${esc(TR.fabName||'—')}</b></div><div class="kv"><span>Producto terminado</span><b>${esc(TR.ptName||'—')}</b></div>`:'<div class="mut sm">Conecta tu tablero para traer las tarjetas con su nota de entrega.</div>'}
- <button class="btn sec" onclick="configTrello()">${TR.ok?'Cambiar configuración':'Conectar Trello'}</button></div>`}
+ ${TR.ok&&NUBE.on?'<div class="mut sm" style="margin-top:6px">☁️ Compartido: todos los teléfonos usan esta conexión.</div>':''}<button class="btn sec" onclick="configTrello()">${TR.ok?'Cambiar configuración':'Conectar Trello'}</button></div>`}
 function configTrello(){openSheet(`<h3>🔗 Conectar Trello</h3>
- <div class="box sm"><b>Cómo sacar la clave y el token (una sola vez):</b><br>1. Entra en Chrome a <span style="user-select:all">trello.com/power-ups/admin</span><br>2. Toca <b>Nuevo</b>, ponle de nombre "Entregas PT", elige tu espacio de trabajo y guarda.<br>3. Entra a la pestaña <b>Clave API</b> → <b>Generar una nueva clave API</b>. Copia la clave.<br>4. Al lado de la clave toca el enlace <b>Token</b> → <b>Permitir</b>. Copia el token.</div>
+ <div class="box sm"><b>Cómo sacar la clave y el token (una sola vez):</b><br>1. Entra en Chrome a <span style="user-select:all">trello.com/power-ups/admin</span><br>2. Toca <b>Nuevo</b>, ponle de nombre "Entregas PT", elige tu espacio de trabajo y guarda.<br>3. Entra a la pestaña <b>Clave API</b> → <b>Generar una nueva clave API</b>. Copia la clave.<br>4. Pega la clave aquí abajo y toca <b>Generar token de solo lectura</b> → <b>Permitir</b>. Copia el token y pégalo.</div>
  <label for="tK">Clave API</label><input id="tK" value="${esc(TR.key||'')}" autocomplete="off"><label for="tT">Token</label><input id="tT" type="password" value="${esc(TR.token||'')}" autocomplete="off">
- <div class="mut sm" style="margin-top:6px">Se guardan solo en este teléfono.</div>
+ <div class="row" style="margin-top:6px"><span class="mut sm">Recomendado: token de <b>solo lectura</b>.</span><button type="button" class="chip" onclick="tokenLectura()">Generar token de solo lectura</button></div>
+ <div class="mut sm" style="margin-top:6px">☁️ Se guarda en la nube: todos los teléfonos de la app quedan conectados solos.</div>
  <button class="btn" onclick="probarTrello()">Conectar y elegir tablero</button><div id="tSel"></div><button class="btn sec" onclick="closeSheet()">Cerrar</button>`)}
 async function probarTrello(){TR.key=$('#tK').value.trim();TR.token=$('#tT').value.trim();if(!TR.key||!TR.token)return toast('Pega la clave y el token');
  $('#tSel').innerHTML='<div class="load">⏳ Conectando…</div>';
@@ -383,13 +385,13 @@ async function elegirTablero(id,btn){const name=btn.querySelector('b').textConte
   <label for="tP">Lista "producto terminado"</label><select id="tP">${op(pt)}</select><button class="btn" onclick="guardarTrello('${id}',${esc(JSON.stringify(name))})">💾 Guardar</button></div>`}
  catch(e){$('#tSel').innerHTML=`<div class="hint w">⚠ ${esc(e.message)}</div>`}}
 function guardarTrello(board,boardName){const f=$('#tF'),p=$('#tP'),a=$('#tA');if(!f.value&&!p.value&&!a.value)return toast('Elige al menos una lista');
- Object.assign(TR,{board,boardName,apr:a.value,aprName:a.value?a.selectedOptions[0].text:'',fab:f.value,fabName:f.value?f.selectedOptions[0].text:'',pt:p.value,ptName:p.value?p.selectedOptions[0].text:''});guardarTR();closeSheet();render();toast('Trello conectado')}
+ Object.assign(TR,{board,boardName,apr:a.value,aprName:a.value?a.selectedOptions[0].text:'',fab:f.value,fabName:f.value?f.selectedOptions[0].text:'',pt:p.value,ptName:p.value?p.selectedOptions[0].text:''});guardarTR();subirTrello();closeSheet();render();toast('Trello conectado en todos los teléfonos')}
 let TRIMP={};
 const esPdf=a=>a.isUpload!==false&&(/pdf/i.test(a.mimeType||'')||/\.pdf$/i.test(a.fileName||a.name||''));
 /* ========= ARRANQUE ========= */
 async function arranque(){render0();const ok=await iniciarNube();const s=leerSesion();
  if(!ok){USR=s||{id:'local',nombre:'Supervisor',rol:'sup'};render();return}
- estadoNube();if(s){USR=s;render();if(NUBE.pendMigrar&&puede('crear'))ofrecerMigrar()}else mostrarLogin();
+ estadoNube();if(s){USR=s;render();if(NUBE.pendMigrar&&puede('crear'))ofrecerMigrar();setTimeout(revisarTrelloNube,1500)}else mostrarLogin();setTimeout(()=>buscarActualizacion(),6000);
  setTimeout(()=>{if(USR)permisoAvisos();trelloRevisar()},4000);setInterval(trelloRevisar,10*60*1000)}
 function render0(){$('#hoyTxt').textContent='Hoy: '+fmt(hoy())}
 
@@ -1124,6 +1126,38 @@ async function crearOrdenDesde(pre,msg){const rev=[];let ot=pre.ot;
  o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Importada de Trello'+(msg?' · '+msg:'')+(rev.length?' · revisar: '+rev.join(', '):'')});
  if(pre.descTrello)o.notas.push({t:new Date(Date.now()+1).toISOString(),a:'Trello',txt:pre.descTrello});DB.ordenes.push(o);return o}
 
+/* ========= ACTUALIZACIÓN AUTOMÁTICA (sin reinstalar) ========= */
+const APP_BUILD=+'__BUILD__'||0;
+const UPD_URL='https://github.com/juanmig054-pixel/entregas-pt/releases/latest/download/version.json';
+const UPD=()=>window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.CapacitorUpdater;
+const HTTP=()=>window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.CapacitorHttp;
+let ACT={estado:'',ultima:0,lista:null};
+try{const U=UPD();if(U)U.notifyAppReady()}catch(e){}
+async function buscarActualizacion(manual){const U=UPD(),H=HTTP();if(!U||!H){if(manual)toast('La actualización automática funciona en la app instalada');return}
+ if(ACT.estado==='bajando')return;if(!manual&&Date.now()-ACT.ultima<20*60e3)return;ACT.ultima=Date.now();
+ try{const r=await H.get({url:UPD_URL+'?t='+Date.now(),responseType:'json'});let v=r.data;if(typeof v==='string')v=JSON.parse(v);
+  if(!v||!(+v.version>APP_BUILD)){if(manual)toast('✓ Tienes la última versión ('+(APP_BUILD||'dev')+')');return}
+  if(ACT.lista&&ACT.lista.version===String(v.version)){ofrecerAct(v);return}
+  ACT.estado='bajando';if(manual)toast('⬇ Descargando la versión '+v.version+'…');
+  const b=await U.download({url:v.url,version:String(v.version)});ACT.lista={id:b.id,version:String(v.version)};ACT.estado='';
+  try{await U.next({id:b.id})}catch(e){}ofrecerAct(v)}
+ catch(e){ACT.estado='';console.warn('actualización',e);if(manual)toast('No se pudo buscar la actualización. Revisa la conexión.')}}
+function ofrecerAct(v){if(sheetOpen){toast('🆕 Versión '+v.version+' lista: se aplica al cerrar y abrir la app');return}
+ openSheet(`<h3>🆕 Nueva versión ${esc(String(v.version))} lista</h3>${v.notas?`<div class="box sm">${esc(v.notas)}</div>`:''}<div class="mut sm">Ya se descargó. Tus datos no se pierden.</div>
+ <button class="btn" onclick="aplicarAct()">Actualizar ahora</button><button class="btn sec" onclick="closeSheet()">Más tarde (se aplica al reabrir la app)</button>`)}
+async function aplicarAct(){try{await UPD().set({id:ACT.lista.id})}catch(e){toast('No se pudo aplicar. Cierra y abre la app.')}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)buscarActualizacion()});
+
+/* ========= TRELLO COMPARTIDO (se configura una vez para todos) ========= */
+const TR_CAMPOS=['key','token','board','boardName','apr','aprName','fab','fabName','pt','ptName'];
+function subirTrello(){if(!NUBE.on||!TR.ok)return;const d={};TR_CAMPOS.forEach(k=>d[k]=TR[k]||'');d.por=quien();d.t=ahora();
+ NUBE.fs.doc('config/trello').set(d).then(()=>{NUBE.trNube=true}).catch(e=>console.error(e))}
+function revisarTrelloNube(){if(NUBE.on&&NUBE.trListo&&!NUBE.trNube&&TR.ok&&puede('ajustes')){subirTrello();toast('🔗 Trello quedó conectado en todos los teléfonos')}}
+function escucharTrello(){NUBE.fs.doc('config/trello').onSnapshot(d=>{if(!d.exists&&d.metadata&&d.metadata.fromCache)return;NUBE.trListo=true;NUBE.trNube=!!d.exists;
+  if(d.exists){const x=d.data(),antes=TR.ok;TR_CAMPOS.forEach(k=>TR[k]=x[k]||'');guardarTR();if(USR&&!sheetOpen)render();if(!antes&&TR.ok)setTimeout(trelloRevisar,1500)}else revisarTrelloNube()},e=>console.warn(e))}
+function tokenLectura(){const k=$('#tK').value.trim();if(!k)return toast('Pega primero la clave API');
+ location.href='https://trello.com/1/authorize?expiration=never&scope=read&response_type=token&name=Entregas%20PT&key='+encodeURIComponent(k)}
+
 /* ========= CALENDARIO ========= */
 function vCal(){if(!S.mes){const d=new Date();S.mes=[d.getFullYear(),d.getMonth()]}if(!S.dia)S.dia=hoy();
  const[y,m]=S.mes,first=new Date(y,m,1),off=(first.getDay()+6)%7,n=new Date(y,m+1,0).getDate(),t=hoy();
@@ -1144,7 +1178,7 @@ function asignar(id){const o=byId(id);o.fechaEntrega=S.dia;o.notas.push({t:ahora
 
 /* ========= AJUSTES E INDICADORES ========= */
 function vAjustes(){const c=DB.cfg;
- const ses=`<div class="box"><div class="kv"><span>Sesión</span><b>${esc(USR.nombre)} · ${ROLES[USR.rol]}</b></div><div class="kv"><span>Datos</span><b>${NUBE.on?'☁️ Compartidos en la nube':'📱 Solo en este teléfono'}</b></div>${NUBE.on?'<button class="btn sec" onclick="cerrarSesion()">Cerrar sesión</button>':''}</div>`;
+ const ses=`<div class="box"><div class="kv"><span>Sesión</span><b>${esc(USR.nombre)} · ${ROLES[USR.rol]}</b></div><div class="kv"><span>Datos</span><b>${NUBE.on?'☁️ Compartidos en la nube':'📱 Solo en este teléfono'}</b></div><div class="kv"><span>Versión de la app</span><b>${APP_BUILD||'desarrollo'}</b></div><button class="btn sec" onclick="buscarActualizacion(true)">🔄 Buscar actualización</button>${NUBE.on?'<button class="btn sec" onclick="cerrarSesion()">Cerrar sesión</button>':''}</div>`;
  const D=DB.ordenes.filter(o=>o.despachada&&o.fechaEntrega&&o.fechaDespacho);
  const at=D.filter(o=>o.fechaDespacho<=o.fechaEntrega).length,pct=D.length?Math.round(at/D.length*100):0;
  const conPT=D.filter(o=>o.fechaPT),prom=conPT.length?(conPT.reduce((s,o)=>s+diasEntre(o.fechaPT,o.fechaDespacho),0)/conPT.length).toFixed(1):'—';
@@ -1165,7 +1199,7 @@ function vAjustes(){const c=DB.cfg;
  <label>Máximo de entregas por día</label><div class="grid2" style="grid-template-columns:50px 1fr 50px"><button class="btn sec" style="margin:0" onclick="cupo(-1)">−</button><div class="big" style="text-align:center">${c.cupo}</div><button class="btn sec" style="margin:0" onclick="cupo(1)">+</button></div></div>
  <div class="box"><h3 style="margin-top:0">💾 Respaldo</h3><div class="mut sm">${NUBE.on?'Los datos se guardan en la nube y en cada teléfono. Igual puedes copiar un respaldo de órdenes, ítems y notas.':'Los datos se guardan solo en este teléfono. Haz un respaldo de vez en cuando y guárdalo en WhatsApp o Drive.'}</div>
  <button class="btn sec" onclick="copiar(JSON.stringify(DB))">📋 Copiar respaldo</button><button class="btn sec" onclick="restaurar()">♻️ Restaurar respaldo</button><button class="btn sec" onclick="copiar(csv())">📊 Copiar tabla para Excel</button></div>`:''}
- <div class="mut sm" style="text-align:center">Entregas PT v2.5 · ${DB.ordenes.length} órdenes registradas</div>`}
+ <div class="mut sm" style="text-align:center">Entregas PT v2.6 · ${DB.ordenes.length} órdenes registradas</div>`}
 function renV(i,v){v=v.trim();if(!v)return render();const old=DB.cfg.vendedores[i];DB.cfg.vendedores[i]=v;DB.ordenes.forEach(o=>{if(o.vendedor===old)o.vendedor=v});save();toast('Vendedor actualizado')}
 function delV(i){preguntar('¿Quitar a '+esc(DB.cfg.vendedores[i])+'? Sus órdenes se conservan.',()=>{DB.cfg.vendedores.splice(i,1);save();closeSheet();render()},'Quitar',1)}
 function addV(){openSheet(`<h3>Nuevo vendedor</h3><label for="vN">Nombre (como sale en las notas)</label><input id="vN" placeholder="Ej: ARNALDO RIVERO"><button class="btn" onclick="const v=$('#vN').value.trim();if(!v)return toast('Escribe el nombre');DB.cfg.vendedores.push(v);save();closeSheet();render()">Agregar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`);setTimeout(()=>$('#vN')?.focus(),50)}

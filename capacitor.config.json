@@ -1,5 +1,13 @@
 {
   "appId": "com.galpon.entregaspt",
   "appName": "Entregas PT",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "statsUrl": "",
+      "resetWhenUpdate": true,
+      "appReadyTimeout": 15000
+    }
+  }
 }

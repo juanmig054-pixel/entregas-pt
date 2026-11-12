@@ -23,6 +23,9 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Marcar el número de versión
+        run: sed -i "s/__BUILD__/${{ github.run_number }}/" www/index.html
+
       - name: Instalar Capacitor y Firebase
         run: npm install
 
@@ -33,9 +36,18 @@ jobs:
           cp node_modules/qrcode-generator/qrcode.js www/lib/qrcode.js
           cp node_modules/jsqr/dist/jsQR.js www/lib/jsQR.js
 
+      - name: Paquete de actualización automática
+        run: |
+          cd www && zip -qr ../www.zip . && cd ..
+          NOTAS=$(git log -1 --pretty=%s | jq -Rs .)
+          echo "{\"version\": ${{ github.run_number }}, \"url\": \"https://github.com/${{ github.repository }}/releases/download/v${{ github.run_number }}/www.zip\", \"notas\": $NOTAS}" > version.json
+          cat version.json
+
       - name: Crear proyecto Android
         run: |
           npx cap add android
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"2.6.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />#' android/app/src/main/AndroidManifest.xml
           npx cap sync android
 
@@ -56,5 +68,8 @@ jobs:
         with:
           tag_name: v${{ github.run_number }}
           name: Entregas PT build ${{ github.run_number }}
-          files: EntregasPT.apk
+          files: |
+            EntregasPT.apk
+            www.zip
+            version.json
           make_latest: true

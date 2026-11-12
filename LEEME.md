@@ -1,5 +1,10 @@
 # Entregas PT
 
+## Novedades v2.6 — actualización automática y Trello para todos
+- **Actualización sin reinstalar**: cada compilación publica `www.zip` y `version.json`. La app revisa al abrir (y al volver a primer plano, cada 20 min), descarga la versión nueva y ofrece aplicarla; si no, se aplica al reabrir. Ajustes muestra la versión y un botón "Buscar actualización". Si una versión falla al arrancar, vuelve sola a la anterior.
+- **Trello compartido**: la conexión (clave, token, tablero y listas) se guarda en la nube (`config/trello`) y todos los teléfonos quedan conectados solos. Recomendado: token de solo lectura (botón en la configuración).
+- El APK ahora lleva número de versión (versionCode = número de compilación).
+
 ## Novedades v2.5 — búsqueda, filtros, edición e historial
 - **Trello**: buscador dentro de la importación, filtro por lista y "solo nuevas", búsqueda 🌐 en todo el tablero (incluye "solicitudes"), etiquetas, vencimiento y PDF visibles. Extrae N° de OT, N° de nota (NE-AAAA-MM-NNN), cliente, tipo (etiqueta NLAB/NAB/Celda), urgente y plazo desde título, descripción, etiquetas y PDF. Si hay varios PDF, pregunta cuál es la nota. **Importar varias** a la vez (las incompletas quedan "Revisar").
 - **Órdenes**: búsqueda sin acentos y por varias palabras (OT, nota, cliente, ítems, notas, chofer, quien recibió, cédula). Panel **⚙ Filtros**: varios estados, vendedor, cliente, tipo, chofer, rango de fechas (entrega, despacho, entrega real, compromiso, creada), urgentes, parciales, sin foto/firma, de Trello, por revisar; y orden.

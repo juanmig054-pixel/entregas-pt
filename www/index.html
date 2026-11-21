@@ -112,6 +112,43 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;b
 .trc{display:flex;gap:10px;align-items:center}.trc div{flex:1;min-width:0}.trc .chip{flex:none}
 .pdfpg{width:100%;border-radius:6px;margin-bottom:8px;background:#fff}
 .load{text-align:center;color:var(--mut);padding:10px;font-size:14px}
+/* ===== v2.7: interfaz dinámica ===== */
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes kpiFlash{0%{background:var(--pri);color:#fff}50%{background:var(--pri);color:#fff}100%{}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fadeBg{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.45)}}
+@keyframes tabIn{from{opacity:.3;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.card{animation:slideIn .18s ease}
+.kpi{transition:transform .15s,box-shadow .15s}.kpi:active{transform:scale(.96)}
+.kpi.flash{animation:kpiFlash .4s ease}
+#sheet.on{animation:fadeBg .2s ease}#sheet.on #sheetBody{animation:sheetUp .22s cubic-bezier(.2,.8,.3,1)}
+main.tabIn{animation:tabIn .2s ease}
+.nav button{transition:color .2s,transform .15s}.nav button:active{transform:scale(.92)}.nav button.on i{transform:translateY(-2px);transition:transform .2s}
+.seg button{transition:background .2s,color .2s}
+#fab{transition:transform .18s ease,box-shadow .18s}#fab:active{transform:scale(.9) rotate(90deg);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.btn,.chip{transition:transform .1s,background .2s}.btn:active,.chip:active{transform:scale(.97)}
+#toast{transition:opacity .35s ease,transform .35s ease;transform:translate(-50%,10px);max-width:88vw;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+#toast.on{opacity:.97;transform:translate(-50%,0)}
+#toast.ok{background:#15803d}#toast.err{background:#dc2626}#toast.warn{background:#b45309}
+.animating{display:inline-block;animation:spin 1s linear infinite}
+mark{background:#fde68a;color:inherit;border-radius:3px;padding:0 1px}
+@media (prefers-color-scheme:dark){mark{background:#92400e;color:#fff}}
+.donde{font-size:12px;color:var(--mut);margin-top:4px;padding:4px 8px;background:var(--bg);border-radius:8px}
+#cnt{transition:color .6s ease}#cnt.chg{color:var(--pri);font-weight:700;transition:none}
+/* panel de despachos */
+.pdesp{border-left:5px solid var(--ruta);animation:slideIn .18s ease}.pdesp.alerta{border-left-color:var(--bad)}
+.pdesp .tiempo{font-variant-numeric:tabular-nums;font-weight:700}
+.pill.alerta{background:var(--bad2);color:var(--bad);animation:pulse 1.6s ease infinite}
+.kpis.k3{grid-template-columns:repeat(3,1fr)}
+/* carga múltiple de PDF */
+.pcola{background:var(--card);border-radius:10px;padding:10px;margin-bottom:8px;animation:slideIn .18s ease}
+.pcola summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}.pcola summary::-webkit-details-marker{display:none}
+.pcola summary .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600}
+.pcola input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--pri);margin:0}
+.pcola .det{margin-top:8px;font-size:13px}.pcola.err{opacity:.75}
+.pill.proc .animating{font-size:11px}
 </style>
 </head>
 <body>
@@ -159,7 +196,9 @@ const sumar=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d)};
 const fmt=s=>{if(!s)return'—';const d=parse(s);return DIAS[d.getDay()]+' '+d.getDate()+' '+MESES[d.getMonth()].slice(0,3)};
 const ahora=()=>new Date().toISOString();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1800)}
+// Toast con color según el tipo detectado por el ícono inicial (✓/✅ éxito, ✕/❌ error, ⚠ aviso)
+function tipoToast(s){s=String(s||'').trim();if(/^(✓|✅)/.test(s))return'ok';if(/^(✕|❌)/.test(s))return'err';if(/^⚠/.test(s))return'warn';return''}
+function toast(t){const e=$('#toast'),tp=tipoToast(t);clearTimeout(e._t);e.textContent=t;e.className='';void e.offsetWidth;e.className='on'+(tp?' '+tp:'');e._t=setTimeout(()=>e.classList.remove('on'),2500)}
 function est(o){if((o.envios||[]).some(e=>e.estado==='ruta'))return'ruta';if(o.despachada)return'desp';if(o.enCola)return'cola';if(o.enFab)return'fab';if(!o.fechaEntrega)return'pt';return o.fechaEntrega<hoy()?'venc':'ag'}
 const byId=id=>DB.ordenes.find(o=>o.id===id);
 const etq=o=>{const e=est(o);if(e==='desp')return o.entregada?'Entregada':'Despachada';if(e==='ruta')return(o.items||[]).some(i=>Math.max(0,(+i.cant>0?+i.cant:1)-(+i.ent||0))>0)?'En ruta · parcial':'En ruta';return((o.items||[]).some(i=>(+i.ent||0)>0)?'Parcial · ':'')+LBL[e]};
@@ -229,7 +268,11 @@ function hintFecha(s,excluir){if(!s)return'';const n=carga(s,excluir),c=DB.cfg.c
  return`<div class="hint g">✓ Disponible (${n}/${c} entregas ese día)</div>`}
 
 /* ========= NAVEGACIÓN Y HOJAS ========= */
-function ir(t){S.tab=t;render();scrollTo(0,0)}
+function ir(t){S.tab=t;render();scrollTo(0,0);const m=$('#main');m.classList.remove('tabIn');void m.offsetWidth;m.classList.add('tabIn')}
+// Destello en los KPI cuyo valor cambió desde el último render
+const KPI_PREV={};
+function flashKpis(){document.querySelectorAll('#main .kpi').forEach(k=>{const key=S.tab+'|'+(S.sub||'')+'|'+(k.querySelector('span')?.textContent||''),v=k.querySelector('b')?.textContent||'';
+ if(KPI_PREV[key]!==undefined&&KPI_PREV[key]!==v){k.classList.add('flash');setTimeout(()=>k.classList.remove('flash'),450)}KPI_PREV[key]=v})}
 function openSheet(h){S.vista='otro';$('#sheetBody').innerHTML=h;$('#sheet').classList.add('on');$('#sheetBody').scrollTop=0;if(!sheetOpen){sheetOpen=true;try{history.pushState({s:1},'')}catch(e){}}}
 function preguntar(msg,ok,txt,peligro,volver){openSheet(`<h3>${msg}</h3><button class="btn ${peligro?'bad':''}" id="qOk">${txt||'Sí, continuar'}</button><button class="btn sec" id="qNo">Cancelar</button>`);$('#qOk').onclick=ok;$('#qNo').onclick=volver||closeSheet}
 let ignorarPop=0;
@@ -242,6 +285,7 @@ function render(){if(!USR)return;
  document.querySelector('.nav [data-tab=prod]').hidden=!USR||USR.rol==='vend';
  $('#main').innerHTML=S.tab==='prod'?vProd():S.tab==='hoy'?vHoy():S.tab==='inicio'?vInicio():S.tab==='cal'?vCal():vAjustes();
  if(S.tab==='inicio'){pintarLista();pintarHist()}
+ flashKpis()
 }
 
 /* ========= USUARIOS Y PERMISOS ========= */
@@ -309,8 +353,8 @@ function pushCambios(){if(!NUBE.on||!NUBE.base)return;const fs=NUBE.fs,FV=fireba
  const c=sj(DB.cfg);if(c!==NUBE.cfgLast&&puede('ajustes')){NUBE.cfgLast=c;ops.push(()=>b.set(fs.doc('config/general'),limpio(DB.cfg)))}
  const commit=()=>b.commit().catch(e=>{console.error(e);toast('⚠ No se pudo sincronizar ('+(e.code||e.message)+')')});
  ops.forEach(f=>{f();if(++n>=400){commit();b=fs.batch();n=0}});if(n)commit()}
-function estadoNube(meta){const el=$('#nube');if(!el)return;
- el.textContent=!NUBE.on?'· 📱 Solo este teléfono':meta&&meta.hasPendingWrites?'· 🟡 Enviando…':(!navigator.onLine||(meta&&meta.fromCache))?'· 🔴 Sin conexión':'· 🟢 En línea'}
+function estadoNube(meta){const el=$('#nube');if(!el)return;NUBE.sync=!!(NUBE.on&&meta&&meta.hasPendingWrites&&navigator.onLine);
+ el.innerHTML=!NUBE.on?'· 📱 Solo este teléfono':NUBE.sync?'· <span class="animating">🔄</span> Sincronizando…':(!navigator.onLine||(meta&&meta.fromCache))?'· 🔴 Sin conexión':'· 🟢 En línea'}
 function refrescar(cambiados){if(!USR)return;const a=document.activeElement;
  if(S.tab==='inicio'&&a&&a.classList&&a.classList.contains('search'))pintarLista();else render();
  if(sheetOpen&&S.vista==='ver'&&cambiados.has(S.verId)&&byId(S.verId)&&!(a&&/INPUT|TEXTAREA/.test(a.tagName))){const y=$('#sheetBody').scrollTop;ver(S.verId);$('#sheetBody').scrollTop=y}}
@@ -405,10 +449,11 @@ function card(o){const e=est(o),t=hoy();let f;
  else if(e==='cola')f='📥 '+estadoCola(o).t;
  else if(e==='fab')f='🔧 '+Math.round(avanceFab(o)*100)+'%'+(finEstimado(o)?' · fin '+fmt(finEstimado(o)):'')+(riesgoFab(o)?' ⚠':'')+(o.fechaEntrega?' · reservado '+fmt(o.fechaEntrega):'');
  else f='📦 En PT hace '+(o.fechaPT?diasEntre(o.fechaPT,t):0)+' d';
+ const q=CARD_Q,h=s=>q?resaltar(s,q):esc(s);
  return`<div class="card st-${e}" onclick="ver('${o.id}')">
- <div class="row"><b class="ot">OT ${esc(o.ot)}</b>${o.urgente&&e!=='desp'?'<span class="pill bad">Urgente</span>':''}${o.revisar?'<span class="pill ag">Revisar</span>':''}<span class="pill ${e}">${etq(o)}</span></div>
- <div class="cli">${esc(o.cliente)}</div><div class="prod">${esc(o.producto)}${o.cant?' · Cant: '+esc(o.cant):''}${o.nota?' · NE '+esc(o.nota):''}</div>
- <div class="row mut sm"><span>👤 ${esc(o.vendedor||'—')}</span><span>${f}</span></div>${o.trelloId?'<span class="sm mut">🔗 Trello </span>':''}${o.notas?.length||o.items?.length||o.adj?`<div class="sm mut" style="margin-top:4px">${o.items?.length?(()=>{const p=progreso(o);return`📋 ${p.listos}/${p.tot} ítems · `})():''}${o.adj?'📎 Nota · ':''}${o.notas?.length?'💬 '+o.notas.length+' nota(s)':''}</div>`:''}</div>`}
+ <div class="row"><b class="ot">OT ${h(o.ot)}</b>${q&&otExacta(o,q)?'<span class="pill desp">🎯 OT exacta</span>':''}${o.urgente&&e!=='desp'?'<span class="pill bad">Urgente</span>':''}${o.revisar?'<span class="pill ag">Revisar</span>':''}<span class="pill ${e}">${etq(o)}</span></div>
+ <div class="cli">${h(o.cliente)}</div><div class="prod">${h(o.producto)}${o.cant?' · Cant: '+esc(o.cant):''}${o.nota?' · NE '+h(o.nota):''}</div>
+ <div class="row mut sm"><span>👤 ${h(o.vendedor||'—')}</span><span>${f}</span></div>${q?dondeHTML(o,q):''}${o.trelloId?'<span class="sm mut">🔗 Trello </span>':''}${o.notas?.length||o.items?.length||o.adj?`<div class="sm mut" style="margin-top:4px">${o.items?.length?(()=>{const p=progreso(o);return`📋 ${p.listos}/${p.tot} ítems · `})():''}${o.adj?'📎 Nota · ':''}${o.notas?.length?'💬 '+o.notas.length+' nota(s)':''}</div>`:''}</div>`}
 
 /* ========= FORMULARIO ========= */
 let FORM={adj:null,items:[]};
@@ -417,8 +462,8 @@ function abrirForm(id,diaPre,pre){const o=id?byId(id):Object.assign({fechaPT:hoy
  const vs=DB.cfg.vendedores.map(v=>`<button type="button" class="chip ${o.vendedor===v?'on':''}" onclick="selV(this)">${esc(v)}</button>`).join('');
  openSheet(`<h3>${id?'Editar orden':'Nueva orden en PT'}</h3>
  <div class="grid2"><div><label>N° OT *</label><input id="fOt" value="${esc(o.ot)}" inputmode="numeric"></div><div><label>Nota de entrega</label><input id="fNota" value="${esc(o.nota)}"></div></div>
- <label>📎 Nota de entrega (PDF o foto)</label><div id="fAdj"></div>
- <input type="file" id="fFile" accept="application/pdf,image/*" style="display:none" onchange="alSubir(this.files[0]);this.value=''">
+ <label>📎 Nota de entrega (PDF o foto)</label><div id="fAdj"></div>${id?'':'<div class="mut sm" style="margin:-2px 0 6px">Puedes elegir varios PDF a la vez: creo una OT por cada nota.</div>'}<div id="pdfCola"></div>
+ <input type="file" id="fFile" accept="application/pdf,image/*" ${id?'':'multiple'} style="display:none" onchange="alSubirVarios(this.files);this.value=''">
  <label>Cliente *</label><input id="fCli" value="${esc(o.cliente)}">
  <label>Ítems de esta OT <span class="mut">(desmarca lo que no va en esta OT)</span></label><div id="fItems"></div>
  <button type="button" class="chip" onclick="syncItems();FORM.items.push({id:uid(),cant:1,desc:'',inc:true});pintarItems(1)">➕ Agregar ítem a mano</button>
@@ -459,6 +504,38 @@ async function alSubir(f){if(!f)return;syncItems();FORM.adj={id:uid(),name:f.nam
   const tp=tipoDe(it.map(i=>i.desc).join(' '));if(tp&&!$('#fTipo').value){$('#fTipo').value=tp;$('#fDias').value=diasTipo(tp)}
   toast(it.length?`Encontré ${it.length} ítem(s). Revisa y desmarca los que no van.`:'No encontré ítems (¿es escaneada?). Agrégalos a mano.')}
  catch(e){console.error(e);pintarAdj();toast('No pude leer el PDF. Quedó adjunto; agrega los ítems a mano.')}}
+/* ===== Carga múltiple de notas PDF (una OT por PDF) ===== */
+let PDF_COLA=[];
+const esPDF=f=>/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
+function alSubirVarios(fs){const L=[...(fs||[])];if(!L.length)return;if(L.length===1)return alSubir(L[0]);
+ const P=L.filter(esPDF);if(P.length<L.length)toast(`⚠ Ignoré ${L.length-P.length} archivo(s) que no son PDF`);
+ if(P.length===1)return alSubir(P[0]);if(P.length)procesarColaPDF(P)}
+const BADGE={pendiente:'<span class="pill">⏳ Pendiente</span>',procesando:'<span class="pill proc ruta"><span class="animating">🔄</span> Procesando</span>',listo:'<span class="pill desp">✅ Listo</span>',error:'<span class="pill bad">❌ Error</span>'};
+function pintarCola(){const el=$('#pdfCola');if(!el)return;if(!PDF_COLA.length){el.innerHTML='';return}
+ const sel=PDF_COLA.filter(p=>p.estado==='listo'&&p.inc).length,fin=PDF_COLA.every(p=>p.estado==='listo'||p.estado==='error');
+ el.innerHTML=`<div class="mut sm" style="margin:4px 0 6px">${PDF_COLA.filter(p=>p.estado==='listo').length}/${PDF_COLA.length} notas leídas${fin?'':' · procesando…'}</div>`+PDF_COLA.map((p,k)=>{const d=p.datos||{};
+  return`<details class="pcola ${p.estado==='error'?'err':''}"><summary>${p.estado==='listo'?`<input type="checkbox" ${p.inc?'checked':''} onclick="event.stopPropagation()" onchange="PDF_COLA[${k}].inc=this.checked;pintarCola()" aria-label="Incluir">`:''}<span class="nm">📄 ${esc(p.nombre)}</span>${BADGE[p.estado]}</summary>
+  <div class="det">${p.estado==='error'?`<div style="color:var(--bad)">No pude leer este PDF: ${esc(p.error||'error desconocido')}</div>`:p.estado!=='listo'?'<div class="mut">Esperando…</div>':
+  `<div><b>OT:</b> ${esc(d.ot||'— (se marcará para revisar)')} · <b>Nota:</b> ${esc(d.nota||'—')}</div><div><b>Cliente:</b> ${esc(d.cliente||'—')}</div>${d.vendedor?`<div><b>Vendedor:</b> ${esc(d.vendedor)}</div>`:''}${d.plazoTxt?`<div><b>Plazo:</b> ${esc(d.plazoTxt)}</div>`:''}${d.tipo?`<div><b>Tipo:</b> ${esc(d.tipo)}</div>`:''}
+  <div style="margin-top:4px"><b>${p.items.length} ítem(s):</b></div>${p.items.length?`<ul style="margin:4px 0 0 18px;padding:0">${p.items.slice(0,8).map(i=>`<li>${esc(i.cant)} × ${esc(i.desc)}</li>`).join('')}${p.items.length>8?`<li class="mut">… y ${p.items.length-8} más</li>`:''}</ul>`:'<div class="mut">Sin ítems detectados (¿escaneada?)</div>'}`}</div></details>`}).join('')+
+  (fin?`<button type="button" class="btn" ${sel?'':'disabled'} onclick="importarColaPDF()">📥 Importar ${sel} OT seleccionada${sel===1?'':'s'}</button><button type="button" class="btn sec" onclick="PDF_COLA=[];pintarCola()">Descartar lote</button>`:'')}
+async function procesarColaPDF(files){PDF_COLA=[...files].map(file=>({file,nombre:file.name,estado:'pendiente',datos:null,items:[],error:null,inc:true}));pintarCola();
+ for(const p of PDF_COLA){p.estado='procesando';pintarCola();
+  try{const lines=await leerPDF(await p.file.arrayBuffer()),d=extraerDatos(lines)||{};p.items=extraerItems(lines)||[];
+   const pl=d.plazo?leerPlazo(d.plazo):null,m=p.nombre.match(RX_OT)||p.nombre.match(/^(\d{3,})\b/)||lines.join(' ').match(RX_OT);
+   p.datos={ot:m?m[1]:'',nota:d.nota||'',cliente:d.cliente||'',vendedor:d.vendedor?(vendedorDe(d.vendedor)||d.vendedor):'',plazoTxt:pl?.txt||'',plazoDias:pl?.dias||0,tipo:tipoDe(p.items.map(i=>i.desc).join(' '))||''};
+   p.estado='listo'}
+  catch(e){console.error(e);p.estado='error';p.error=e?.message||String(e);p.inc=false}
+  pintarCola()}
+ const ok=PDF_COLA.filter(p=>p.estado==='listo').length,er=PDF_COLA.length-ok;toast(er?`⚠ ${ok} nota(s) leídas, ${er} con error`:`✓ ${ok} notas leídas. Revisa e importa.`)}
+async function importarColaPDF(){const S2=PDF_COLA.filter(p=>p.estado==='listo'&&p.inc);if(!S2.length)return toast('⚠ No hay notas seleccionadas');
+ const e=$('#fEst .chip.on')?.dataset.e||'pt',urg=!!$('#fUrg')?.checked;let n=0,rv=0;
+ for(const p of S2){const d=p.datos,dias=diasTipo(d.tipo)||0;
+  try{const o=await crearOrdenDesde({ot:d.ot,nota:d.nota,cliente:d.cliente,vendedor:d.vendedor,items:p.items.map(i=>({id:uid(),...i})),tipo:d.tipo,diasEst:dias,
+    plazoTxt:d.plazoTxt,plazoDias:d.plazoDias,plazoBase:d.plazoDias?hoy():'',fechaCompromiso:d.plazoDias?sumarLV(hoy(),d.plazoDias):'',fechaPT:e==='pt'?hoy():'',
+    enFab:e==='fab',enCola:e==='cola',urgente:urg,adj:{id:uid(),name:p.nombre,type:'application/pdf',file:p.file},origen:'PDF'},p.nombre);n++;if(o.revisar)rv++}
+  catch(err){console.error(err);p.estado='error';p.error=err?.message||String(err)}}
+ PDF_COLA=[];save();closeSheet();render();toast(`✓ ${n} OT creada${n===1?'':'s'} desde PDF`+(rv?` · ${rv} por revisar`:''))}
 async function guardar(id){syncItems();
  const g=s=>$(s).value.trim(),ot=g('#fOt'),cli=g('#fCli');
  const inc=FORM.items.filter(i=>i.inc&&i.desc),resto=FORM.items.filter(i=>!i.inc&&i.desc);
@@ -565,13 +642,12 @@ function vHoy(){const t=hoy(),man=sumar(t,1),M=misOrdenes();
  const sec=(ic,tit,L,nota)=>L.length?`<div class="sec"><h3>${ic} ${tit}</h3><span class="pill">${L.length}</span></div>${nota?`<div class="mut sm" style="margin:-4px 0 8px">${nota}</div>`:''}${L.map(card).join('')}`:'';
  const todo=(puede('crear')?colaOrdenada().filter(o=>{const x=holgura(o);return x!==null&&x<=0}).length:0)+venc.length+riesgo.length+paraHoy.length+ruta.length+parc.length+sp.length+rev.length+entr.length+manana.length+sinF.length;
  const acc=`<div class="grid2" style="margin:0 0 10px">${puede('despachar')?'<button class="btn" style="margin:0" onclick="armarViaje()">🚛 Armar viaje</button>':''}<button class="btn sec" style="margin:0" onclick="$(\'#qrFile\').click()">📷 Escanear QR</button></div>${TR.nuevas&&puede('trello')?`<button class="btn sec" style="margin:0 0 10px" onclick="trelloImportar()">📥 ${TR.nuevas} tarjeta(s) nueva(s) en Trello</button>`:''}`;
- return acc+`<div class="mut sm" style="margin-bottom:8px;text-transform:capitalize">${new Date().toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})}${esDiaDesp(t)?` · ${carga(t)}/${DB.cfg.cupo} cupos usados`:' · hoy no es día de despacho'}</div>
+ return acc+vPanelDespachos()+`<div class="mut sm" style="margin-bottom:8px;text-transform:capitalize">${new Date().toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})}${esDiaDesp(t)?` · ${carga(t)}/${DB.cfg.cupo} cupos usados`:' · hoy no es día de despacho'}</div>
  <div class="kpis">${k(paraHoy.length,'Por despachar')}${k(ruta.length,'En ruta')}${k(entr.length,'Entregadas')}${k(venc.length,'Vencidas','red')}</div>
  ${sec('⏰','Vencidas',venc,'Tenían fecha y no han salido. Reprograma o despacha.')}
  ${sec('⚠️','En riesgo',riesgo,'Agendadas para hoy o mañana y siguen en fabricación.')}
  ${puede('crear')?sec('🏭','Debe iniciar fabricación',colaOrdenada().filter(o=>{const x=holgura(o);return x!==null&&x<=0}),'Si no inician hoy, no llegan a la fecha compromiso.'):''}
  ${sec('🚚','Para despachar hoy',paraHoy,paraHoy.length?`${listos} de ${paraHoy.length} con todos los ítems verificados.`:'')}
- ${ruta.length?`<div class="sec"><h3>🛣 En ruta</h3><span class="pill">${ruta.length}</span></div><div class="mut sm" style="margin:-4px 0 8px">Confirma la entrega cuando lleguen al cliente.</div>${viajesEnCurso()}`:''}
  ${viajesTerminados()}
  ${sec('🧩','Notas con entregas parciales',parc,'Ya salió una parte; falta enviar el resto.')}
  ${sec('📷','Entregas sin foto ni firma',sp,'Abre la OT y toca ✏️ Agregar fotos en el envío.')}
@@ -580,6 +656,36 @@ function vHoy(){const t=hoy(),man=sumar(t,1),M=misOrdenes();
  ${sec('📅','Mañana',manana)}
  ${sec('📦','Listas sin fecha',sinF,'Están en producto terminado y no tienen día de entrega.')}
  ${todo?'':'<div class="empty">Todo al día. No hay despachos pendientes.</div>'}`}
+
+/* ========= PANEL DE VERIFICACIÓN DE DESPACHOS ========= */
+const H_ALERTA=4;
+function filaDesp(o,e,now){const sal=e.salida||o.tSalida,ms=sal?now-new Date(sal):0,ruta=e.estado==='ruta',sp=sinPrueba(e),
+  al=ruta?ms>H_ALERTA*36e5:sp&&e.entrega?.t&&now-new Date(e.entrega.t)>H_ALERTA*36e5,otrosSP=(o.envios||[]).some(x=>x!==e&&sinPrueba(x));
+ const st=ruta?'<span class="pill ruta">🚛 En camino</span>':sp?'<span class="pill ag">⏳ Pendiente de confirmación</span>':'<span class="pill desp">✅ Entregada</span>';
+ const bt=ruta&&puede('despachar')?`<button class="btn" style="margin:0" onclick="formEntrega('${o.id}','${e.id}')">✅ Confirmar entrega</button>`:sp&&puede('despachar')?`<button class="btn" style="margin:0" onclick="editarEnvio('${o.id}','${e.id}')">📷 Agregar prueba</button>`:'';
+ return`<div class="box pdesp ${al?'alerta':''}" style="padding:10px 12px;margin-bottom:8px">
+ <div class="row"><b class="ot">OT ${esc(o.ot)}${(o.envios||[]).length>1?' · envío #'+e.n:''}</b>${st}</div>
+ <div class="cli">📍 ${esc(o.cliente||'—')}</div>
+ <div class="mut sm">🚛 ${esc(e.viaje?.chofer||'Sin chofer')}${e.viaje?.vehiculo?' · '+esc(e.viaje.vehiculo):''} · ${e.items?.length||0} ítem(s)</div>
+ <div class="sm" style="margin-top:4px">🕒 Salió ${sal?hhmm(sal):'—'}${ruta&&sal?` · lleva <span class="tiempo" data-t="${esc(sal)}">${durMs(ms)}</span> en ruta`:e.entrega?` · entregada ${hhmm(e.entrega.t)} (${dur(sal,e.entrega.t)})${e.entrega.recibe?' · recibió '+esc(e.entrega.recibe):''}`:''}</div>
+ ${al||sp||otrosSP?`<div style="margin-top:6px">${al&&ruta?`<span class="pill alerta">⏰ Más de ${H_ALERTA} h en ruta</span> `:''}${sp||otrosSP?`<span class="pill ${al?'alerta':'bad'}">⚠ Sin prueba</span>`:''}</div>`:''}
+ <div class="grid2" style="margin-top:8px">${bt}<button class="btn sec" style="margin:0" onclick="ver('${o.id}')">Ver OT</button></div></div>`}
+function vPanelDespachos(){const t=hoy(),now=Date.now(),M=misOrdenes(),E=[];M.forEach(o=>(o.envios||[]).forEach(e=>E.push({o,e})));
+ const R=M.filter(o=>est(o)==='ruta').map(o=>({o,e:enviosRuta(o).at(-1)||o.envios.at(-1)})).filter(x=>x.e),
+  sal=E.filter(({e})=>locDate(e.salida)===t),ent=E.filter(({e})=>e.entrega&&locDate(e.entrega.t)===t),
+  sp=E.filter(({e})=>sinPrueba(e)&&diasEntre(locDate(e.entrega.t),t)<=30);
+ const nDesp=M.filter(o=>o.fechaDespacho===t).length,nEnt=M.filter(o=>o.fechaEntregado===t).length,pd=S.pd||'';
+ const k=(f,v,l,red)=>`<div class="kpi ${pd===f?'on':''} ${red&&v?'red':''}" role="button" onclick="S.pd=S.pd==='${f}'?'':'${f}';render()"><b>${v}</b><span>${l}</span></div>`;
+ const g={};R.forEach(x=>{const kk=x.e.viaje?.id||'s-'+x.e.id;(g[kk]=g[kk]||{v:x.e.viaje||{},L:[]}).L.push(x)});
+ const viajes=Object.values(g).map(({v,L})=>{const s=v.salida||L[0].e.salida,ms=s?now-new Date(s):0;
+  return`<div class="mut sm" style="margin:2px 0 6px">🚛 <b>${esc(v.chofer||'Sin chofer')}</b>${v.vehiculo?' · '+esc(v.vehiculo):''} · salió ${s?hhmm(s):'—'} · <span class="tiempo" data-t="${esc(s||'')}">${durMs(ms)}</span> fuera · ${L.length} OT</div>${L.map(({o,e})=>filaDesp(o,e,now)).join('')}`}).join('');
+ const F={hoyDesp:['🚚 Salidas de hoy',sal],hoyEnt:['✅ Entregas confirmadas hoy',ent],sinPrueba:['⚠ Entregas sin foto ni firma',sp]}[pd];
+ return`<div class="sec"><h3>🚛 Despachos en curso</h3><span class="pill">${R.length}</span></div>
+ ${R.length?viajes:'<div class="empty" style="padding:14px">Sin despachos activos ahora</div>'}
+ <div class="mut sm" style="margin:6px 0 4px">Resumen del día · toca para filtrar</div>
+ <div class="kpis k3">${k('hoyDesp',nDesp||sal.length,'Despachos hoy')}${k('hoyEnt',nEnt||ent.length,'Entregas hoy')}${k('sinPrueba',sp.length,'Sin prueba',1)}</div>
+ ${F?`<div class="sec"><h3>${F[0]}</h3><button class="chip" onclick="S.pd='';render()">✕ Quitar</button></div>${F[1].length?F[1].sort((a,b)=>String(b.e.salida).localeCompare(String(a.e.salida))).map(({o,e})=>filaDesp(o,e,now)).join(''):'<div class="mut sm" style="margin-bottom:10px">Nada por aquí.</div>'}`:''}`}
+setInterval(()=>document.querySelectorAll('.tiempo[data-t]').forEach(el=>{if(el.dataset.t)el.textContent=durMs(Date.now()-new Date(el.dataset.t))}),30000);
 
 /* ========= LÍNEA DE TIEMPO ========= */
 function durMs(ms){const m=Math.max(0,ms/6e4);return m<60?Math.round(m)+' min':m<2880?Math.round(m/60)+' h':Math.round(m/1440)+' d'}
@@ -851,6 +957,24 @@ const sinAc=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase
 const locDate=t=>{const d=new Date(t);return isNaN(d)?String(t||'').slice(0,10):iso(d)};
 function textoOT(o){return sinAc([o.ot,o.nota,o.cliente,o.producto,o.vendedor,o.tipo,o.trelloNombre,...(o.items||[]).map(i=>i.desc),...(o.notas||[]).map(n=>n.txt),...(o.envios||[]).flatMap(e=>[e.viaje?.chofer,e.viaje?.vehiculo,e.entrega?.recibe,e.entrega?.ci,e.entrega?.obs])].filter(Boolean).join(' '))}
 function coincide(o,q){const w=sinAc(q).split(/\s+/).filter(Boolean);if(!w.length)return true;const t=textoOT(o);return w.every(x=>t.includes(x))}
+let CARD_Q='';
+const esNumQ=q=>/^\d+$/.test(String(q??'').trim());
+const otExacta=(o,q)=>esNumQ(q)&&String(o.ot??'').trim().replace(/^0+/,'')===String(q).trim().replace(/^0+/,'');
+const ACX={a:'aáàäâ',e:'eéèëê',i:'iíìïî',o:'oóòöô',u:'uúùüû',n:'nñ',c:'cç'};
+function rxQ(q){const w=sinAc(q).split(/\s+/).filter(Boolean);if(!w.length)return null;
+ const p=w.sort((a,b)=>b.length-a.length).map(x=>[...x].map(ch=>ACX[ch]?'['+ACX[ch]+']':ch.replace(/[.*+?^${}()|[\]\\\/-]/g,'\\$&')).join(''));
+ return new RegExp('('+p.join('|')+')','gi')}
+function resaltar(texto,q){const s=String(texto??'');const rx=rxQ(q);if(!rx||!s)return esc(s);let out='',last=0,m;
+ while((m=rx.exec(s))){if(!m[0]){rx.lastIndex++;continue}out+=esc(s.slice(last,m.index))+'<mark>'+esc(m[0])+'</mark>';last=m.index+m[0].length}
+ return out+esc(s.slice(last))}
+function snip(s,x){const t=String(s??''),i=sinAc(t).indexOf(x);if(i<0)return t.slice(0,40);const a=Math.max(0,i-15),b=Math.min(t.length,i+x.length+25);return(a>0?'…':'')+t.slice(a,b)+(b<t.length?'…':'')}
+function dondeHTML(o,q){const w=sinAc(q).split(/\s+/).filter(Boolean);if(!w.length)return'';
+ const vis=sinAc([o.ot,o.cliente,o.producto,o.nota,o.vendedor].filter(Boolean).join(' '));const F=[];
+ (o.items||[]).forEach(i=>F.push(['ítem',i.desc]));(o.notas||[]).forEach(n=>F.push(['nota',n.txt]));
+ (o.envios||[]).forEach(e=>{F.push(['chofer',e.viaje?.chofer],['vehículo',e.viaje?.vehiculo],['recibió',e.entrega?.recibe],['cédula',e.entrega?.ci],['obs.',e.entrega?.obs])});
+ F.push(['tipo',o.tipo],['Trello',o.trelloNombre]);const parts=[],vistos=new Set();
+ w.filter(x=>!vis.includes(x)).forEach(x=>{const f=F.find(([,v])=>v&&sinAc(v).includes(x));if(!f)return;const k=f[0]+'|'+f[1];if(vistos.has(k))return;vistos.add(k);parts.push(`${f[0]}: <b>${resaltar(snip(f[1],x),q)}</b>`)});
+ return parts.length?`<div class="donde">🔎 encontrado en ${parts.slice(0,3).join(' · ')}</div>`:''}
 const FKEY='entregasPT_filtros';
 function fVacio(){return{est:[],vend:'',cli:'',tipo:'',chofer:'',campo:'entrega',desde:'',hasta:'',urg:false,parc:false,sinPrueba:false,trello:false,revisar:false,orden:'prioridad'}}
 S.f=(()=>{try{return Object.assign(fVacio(),JSON.parse(localStorage.getItem(FKEY))||{})}catch(e){return fVacio()}})();
@@ -903,15 +1027,15 @@ function aplicarF(){S.f={est:[...document.querySelectorAll('#fiEst .chip.on')].m
   urg:$('#fiUrg').checked,parc:$('#fiParc').checked,sinPrueba:$('#fiSP').checked,trello:$('#fiTr').checked,revisar:$('#fiRev').checked,orden:$('#fiOrd').value};
  if(S.filtro!=='todas'&&(S.f.est.length||S.f.chofer||S.f.sinPrueba||((S.f.desde||S.f.hasta)&&['despacho','entregado','creada'].includes(S.f.campo))))S.filtro='todas';
  guardarF();closeSheet();render()}
-function segOrd(){return`<div class="seg" role="tablist"><button role="tab" class="${S.sub!=='hist'?'on':''}" onclick="S.sub='lista';render()">📋 Órdenes</button><button role="tab" class="${S.sub==='hist'?'on':''}" onclick="S.sub='hist';render()">🕒 Historial</button></div>`}
-function vInicio(){if(S.sub==='hist')return vHist();
+function segOrd(){return`<div class="seg" role="tablist"><button role="tab" class="${S.sub!=='hist'&&S.sub!=='desp'?'on':''}" onclick="S.sub='lista';render()">📋 Órdenes</button><button role="tab" class="${S.sub==='desp'?'on':''}" onclick="S.sub='desp';render()">🚛 Despachos del día</button><button role="tab" class="${S.sub==='hist'?'on':''}" onclick="S.sub='hist';render()">🕒 Historial</button></div>`}
+function vInicio(){if(S.sub==='hist')return vHist();if(S.sub==='desp')return segOrd()+vPanelDespachos();
  const act=DB.ordenes.filter(o=>!o.despachada),t=hoy(),n=e=>act.filter(o=>est(o)===e).length;
  const k=(f,v,l,red)=>`<div class="kpi ${S.filtro===f?'on':''} ${red&&v?'red':''}" onclick="setF('${f}')"><b>${v}</b><span>${l}</span></div>`;
  const ch=(f,l)=>`<button class="chip ${S.filtro===f?'on':''}" onclick="setF('${f}')">${l}</button>`;
  const nf=listaActivos().length;
  return segOrd()+`<div class="grid2" style="margin:0 0 12px">${puede('crear')&&TR.ok?'<button class="btn sec" style="margin:0" onclick="trelloImportar()">⬇ Traer de Trello</button>':''}<button class="btn sec" style="margin:0" onclick="$(\'#qrFile\').click()">📷 Escanear QR</button></div>
  <div class="kpis">${k('pt',n('pt'),'Sin fecha')}${k('ag',n('ag'),'Agendadas')}${k('venc',n('venc'),'Vencidas',1)}${k('hoy',act.filter(o=>o.fechaEntrega===t).length,'Para hoy')}</div>
- <div style="display:flex;gap:6px"><input class="search" id="oq" placeholder="🔍 OT, nota, cliente, ítem, chofer, quien recibió…" value="${esc(S.q)}" oninput="S.q=this.value;pintarLista()" aria-label="Buscar órdenes"><button class="chip" id="oqx" style="flex:none" onclick="S.q='';render()" aria-label="Borrar búsqueda" ${S.q?'':'hidden'}>✕</button></div>
+ <div style="display:flex;gap:6px"><input class="search" id="oq" placeholder="🔍 OT, nota, cliente, ítem, chofer, quien recibió…" value="${esc(S.q)}" oninput="S.q=this.value;clearTimeout(S._qt);S._qt=setTimeout(pintarLista,200)" aria-label="Buscar órdenes"><button class="chip" id="oqx" style="flex:none" onclick="S.q='';render()" aria-label="Borrar búsqueda" ${S.q?'':'hidden'}>✕</button></div>
  <div class="fbar"><div class="chips">${ch('activas','Activas')}${ch('ruta','🛣 En ruta')}${ch('fab','🔧 En fabricación')}${ch('cola','📥 En cola')}${ch('pt','Sin fecha')}${ch('ag','Agendadas')}${ch('venc','Vencidas')}${ch('desp','Despachadas')}${ch('todas','Todas')}</div><button class="chip ${nf?'on':''}" style="flex:none" onclick="abrirFiltros()">⚙ Filtros${nf?' ('+nf+')':''}</button></div>
  ${activosHTML()}<div class="mut sm" id="cnt" style="margin-bottom:6px"></div><div id="lista"></div>`}
 function pintarLista(){if(!$('#lista'))return;const t=hoy(),qx=$('#oqx');if(qx)qx.hidden=!S.q;
@@ -920,7 +1044,7 @@ function pintarLista(){if(!$('#lista'))return;const t=hoy(),qx=$('#oqx');if(qx)q
   if(['cola','ruta','fab','pt','ag','venc','desp'].includes(S.filtro)&&e!==S.filtro)return false;
   if(USR&&USR.rol==='vend'&&(o.vendedor||'').toLowerCase()!==USR.nombre.toLowerCase())return false;
   if(S.filtro==='hoy'&&(o.despachada||o.fechaEntrega!==t))return false;
-  return pasaF(o)&&coincide(o,S.q)});
+  return pasaF(o)&&(coincide(o,S.q)||otExacta(o,S.q))});
  const rk={venc:0,ruta:1,ag:2,pt:3,fab:4,cola:5,desp:6};
  const prio=(a,b)=>{const ea=est(a),eb=est(b);if(rk[ea]!==rk[eb])return rk[ea]-rk[eb];
   if(ea==='desp')return(b.fechaDespacho||'').localeCompare(a.fechaDespacho||'');
@@ -928,15 +1052,18 @@ function pintarLista(){if(!$('#lista'))return;const t=hoy(),qx=$('#oqx');if(qx)q
   return(a.fechaEntrega||'').localeCompare(b.fechaEntrega||'')};
  const ult=o=>[o.creada,...(o.notas||[]).map(n=>n.t)].filter(Boolean).sort().pop()||'';
  const cmp={prioridad:prio,reciente:(a,b)=>ult(b).localeCompare(ult(a)),ot:(a,b)=>String(a.ot).localeCompare(String(b.ot),'es',{numeric:true}),cliente:(a,b)=>String(a.cliente).localeCompare(String(b.cliente),'es'),entrega:(a,b)=>(a.fechaEntrega||'9').localeCompare(b.fechaEntrega||'9')};
- L.sort(cmp[S.f.orden]||prio);const c=$('#cnt');if(c)c.textContent=L.length+' orden(es)';
- $('#lista').innerHTML=L.length?L.map(card).join(''):`<div class="empty">${DB.ordenes.length?'No hay órdenes con esta búsqueda o filtro.':(puede('crear')?'Aún no hay órdenes.<br>Toca <b>+</b> para agregar la primera.':'Aún no hay órdenes para ti.')}</div>`}
+ L.sort(cmp[S.f.orden]||prio);
+ const qn=S.q.trim();if(esNumQ(qn))L.sort((a,b)=>(otExacta(b,qn)?1:0)-(otExacta(a,qn)?1:0));
+ const c=$('#cnt');if(c){const txt=L.length+' orden(es)'+(qn?' para "'+qn+'"':'');if(S._cnt!==undefined&&S._cnt!==L.length){c.classList.add('chg');setTimeout(()=>c.classList.remove('chg'),80)}S._cnt=L.length;c.textContent=txt}
+ CARD_Q=qn;let html;try{html=L.map(o=>card(o)).join('')}finally{CARD_Q=''}
+ $('#lista').innerHTML=L.length?html:`<div class="empty">${DB.ordenes.length?'No hay órdenes con esta búsqueda o filtro.':(puede('crear')?'Aún no hay órdenes.<br>Toca <b>+</b> para agregar la primera.':'Aún no hay órdenes para ti.')}</div>`}
 
 /* ========= HISTORIAL ========= */
 const TEV={creada:['🆕','OT creada'],nota:['💬','Nota'],verif:['☑️','Verificación'],envio:['🛣','Envío'],entrega:['✅','Entrega'],prod:['🏭','Producción'],agenda:['📅','Agenda'],edicion:['✏️','Edición'],foto:['📷','Foto'],otro:['•','Otro']};
 function tipoEv(t){if(/^Salió|regresó|Salida deshecha|Envío #\d+ deshecho/i.test(t))return'envio';if(/^Importada/i.test(t))return'creada';if(/^Editó|^Eliminó|deshech/i.test(t))return'edicion';if(/Entreg/i.test(t))return'entrega';
  if(/fabricaci|etapa|producto terminado|Llegó a PT|Inició/i.test(t))return'prod';if(/Agendada|Reprogramada|quitó la fecha/i.test(t))return'agenda';return'otro'}
 function eventosOT(o){const ev=[],add=(t,tipo,txt,por,x)=>{if(t)ev.push({t,tipo,txt,por:por||'',o,...(x||{})})};
- if(!(o.notas||[]).some(n=>n.sis&&/^Importada de Trello/.test(n.txt)))add(o.creada,'creada','OT creada'+(o.trelloId?' desde Trello':''));
+ if(!(o.notas||[]).some(n=>n.sis&&/^Importada de /.test(n.txt)))add(o.creada,'creada','OT creada'+(o.trelloId?' desde Trello':''));
  (o.notas||[]).forEach(n=>{if(n.sis&&/^Entregado envío #\d+ a /.test(n.txt))return;add(n.t,n.sis?tipoEv(n.txt):'nota',n.txt,n.a,{edit:!!n.edit})});
  (o.items||[]).forEach(i=>{if(i.t&&i.por)add(i.t,'verif','Verificó '+i.cant+' '+String(i.desc).slice(0,60),i.por)});
  (o.envios||[]).forEach(e=>{if(e.entrega)add(e.entrega.t,'entrega',`Entregado envío #${e.n} a ${e.entrega.recibe}${e.entrega.ci?' (C.I. '+e.entrega.ci+')':''}${e.entrega.obs?' · '+e.entrega.obs:''}${sinPrueba(e)?' · sin foto ni firma':''}`,e.entrega.por)});
@@ -1123,7 +1250,7 @@ async function crearOrdenDesde(pre,msg){const rev=[];let ot=pre.ot;
  if(pre.adj&&pre.adj.file){const a={id:pre.adj.id,name:pre.adj.name,type:pre.adj.type};try{await IDB.put(a.id,{...a,blob:pre.adj.file})}catch(e){}subirAdj(a.id,a,pre.adj.file);o.adj=a}
  if(o.enFab){o.tInicio=ahora();o.etapas=DB.cfg.etapas.map(n=>({n,ok:false}))}if(!o.enFab&&!o.enCola&&!o.fechaPT)o.fechaPT=hoy();
  if(rev.length){o.revisar=true;o.revisarPor=rev}
- o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Importada de Trello'+(msg?' · '+msg:'')+(rev.length?' · revisar: '+rev.join(', '):'')});
+ o.notas.push({t:ahora(),a:quien(),sis:1,txt:'Importada de '+(pre.origen||'Trello')+(msg?' · '+msg:'')+(rev.length?' · revisar: '+rev.join(', '):'')});
  if(pre.descTrello)o.notas.push({t:new Date(Date.now()+1).toISOString(),a:'Trello',txt:pre.descTrello});DB.ordenes.push(o);return o}
 
 /* ========= ACTUALIZACIÓN AUTOMÁTICA (sin reinstalar) ========= */
@@ -1199,7 +1326,7 @@ function vAjustes(){const c=DB.cfg;
  <label>Máximo de entregas por día</label><div class="grid2" style="grid-template-columns:50px 1fr 50px"><button class="btn sec" style="margin:0" onclick="cupo(-1)">−</button><div class="big" style="text-align:center">${c.cupo}</div><button class="btn sec" style="margin:0" onclick="cupo(1)">+</button></div></div>
  <div class="box"><h3 style="margin-top:0">💾 Respaldo</h3><div class="mut sm">${NUBE.on?'Los datos se guardan en la nube y en cada teléfono. Igual puedes copiar un respaldo de órdenes, ítems y notas.':'Los datos se guardan solo en este teléfono. Haz un respaldo de vez en cuando y guárdalo en WhatsApp o Drive.'}</div>
  <button class="btn sec" onclick="copiar(JSON.stringify(DB))">📋 Copiar respaldo</button><button class="btn sec" onclick="restaurar()">♻️ Restaurar respaldo</button><button class="btn sec" onclick="copiar(csv())">📊 Copiar tabla para Excel</button></div>`:''}
- <div class="mut sm" style="text-align:center">Entregas PT v2.6 · ${DB.ordenes.length} órdenes registradas</div>`}
+ <div class="mut sm" style="text-align:center">Entregas PT v2.7 · ${DB.ordenes.length} órdenes registradas</div>`}
 function renV(i,v){v=v.trim();if(!v)return render();const old=DB.cfg.vendedores[i];DB.cfg.vendedores[i]=v;DB.ordenes.forEach(o=>{if(o.vendedor===old)o.vendedor=v});save();toast('Vendedor actualizado')}
 function delV(i){preguntar('¿Quitar a '+esc(DB.cfg.vendedores[i])+'? Sus órdenes se conservan.',()=>{DB.cfg.vendedores.splice(i,1);save();closeSheet();render()},'Quitar',1)}
 function addV(){openSheet(`<h3>Nuevo vendedor</h3><label for="vN">Nombre (como sale en las notas)</label><input id="vN" placeholder="Ej: ARNALDO RIVERO"><button class="btn" onclick="const v=$('#vN').value.trim();if(!v)return toast('Escribe el nombre');DB.cfg.vendedores.push(v);save();closeSheet();render()">Agregar</button><button class="btn sec" onclick="closeSheet()">Cancelar</button>`);setTimeout(()=>$('#vN')?.focus(),50)}

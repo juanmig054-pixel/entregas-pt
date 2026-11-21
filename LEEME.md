@@ -1,5 +1,12 @@
 # Entregas PT
 
+## Novedades v2.7 — búsqueda dinámica, panel de despachos y carga múltiple de PDF
+
+- **Búsqueda mejorada:** responde mientras escribes (200 ms), resalta los términos en OT, cliente, producto y nota, indica dónde coincidió cuando el dato no se ve en la tarjeta (ítem, nota, chofer, quien recibió…) y, si escribes solo números, pone primero la OT exacta (🎯). El contador de resultados se anima.
+- **Interfaz más dinámica:** tarjetas con entrada suave, transición entre pestañas, KPIs que destellan al cambiar, avisos de colores según el tipo (éxito, error, advertencia), ícono 🔄 girando al sincronizar con la nube y botón + con animación.
+- **Panel de despachos:** en *Hoy* y en el nuevo sub-tab *🚛 Despachos del día* de Inicio: OT en ruta agrupadas por viaje (chofer, vehículo, hora de salida, tiempo en ruta en vivo), alerta si llevan más de 4 h, badge *⚠ Sin prueba*, botón *✅ Confirmar entrega* y resumen del día (despachos, entregas y entregas sin prueba) que filtra al tocarlo.
+- **Carga múltiple de PDF:** en *Nueva orden* puedes elegir varias notas a la vez. Se leen una por una con su estado (⏳/🔄/✅/❌), muestras qué se extrajo de cada una, eliges cuáles incluir e importas una OT por PDF. Si eliges un solo archivo, todo funciona como antes.
+
 ## Novedades v2.6 — actualización automática y Trello para todos
 - **Actualización sin reinstalar**: cada compilación publica `www.zip` y `version.json`. La app revisa al abrir (y al volver a primer plano, cada 20 min), descarga la versión nueva y ofrece aplicarla; si no, se aplica al reabrir. Ajustes muestra la versión y un botón "Buscar actualización". Si una versión falla al arrancar, vuelve sola a la anterior.
 - **Trello compartido**: la conexión (clave, token, tablero y listas) se guarda en la nube (`config/trello`) y todos los teléfonos quedan conectados solos. Recomendado: token de solo lectura (botón en la configuración).
